@@ -62,8 +62,9 @@ that come outside its FujiBus frames. Set Mode to FujiNet Modem, then type
   From then on keys go straight to the BBS.
 - `NO CARRIER` (the far end hangs up) returns to the command state.
 - If a dial is accepted (fujinet-pc's log shows it connecting) but nothing
-  comes back and the far end hangs up after a minute or two, try another
-  BBS: lists of Telnet BBSs carry many that no longer answer properly.
+  comes back and the far end hangs up after a minute or two, check the wire
+  from the FujiNet's TX to the Pocket's RX first (the line check's R should
+  count up after a dial), then try another BBS.
 - The modem needs WiFi set up in the FujiNet (its web page, or CONFIG).
 
 
