@@ -3,6 +3,12 @@
 monitor with a separate keyboard), monochrome pixel art, light on black like
 openFPGA-7800's.
 
+On the Pocket (light UI, checked 2026-11-21) the values are ink on the page:
+0 is the white page, 255 full black, so the picture shows as a negative of
+docs/platform-image.png (a dark case, a light screen with dark text). Kept
+that way on purpose; to flip it, draw the terminal's own colours inverted and
+leave the background 0.
+
 Writes dist/Platforms/_images/netterm.bin in the Pocket's format (Analogue's
 "Graphical Asset Formats"): 521 x 165, 16 bits a pixel with the brightness in
 the upper byte (in the file: the brightness byte, then 0), stored rotated
