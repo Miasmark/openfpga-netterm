@@ -34,15 +34,15 @@ static void key_out(int k)
     };
     if (k == K_ENTER) {
         int e = setting(SET_ENTER);
-        host_sends(e == 1 ? "\r\n" : e == 2 ? "\n" : "\r");
+        user_sends(e == 1 ? "\r\n" : e == 2 ? "\n" : "\r");
     } else if (k == K_BKSP) {
         char b = setting(SET_BKSP) ? 8 : 127;
-        host_send(&b, 1);
+        user_send(&b, 1);
     } else if (k >= K_UP && k <= K_F12) {
-        host_sends(seq[k - K_UP]);
+        user_sends(seq[k - K_UP]);
     } else if (k < 0x100) {
         char b = (char)k;
-        host_send(&b, 1);
+        user_send(&b, 1);
     }
 }
 

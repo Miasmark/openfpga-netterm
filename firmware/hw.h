@@ -27,7 +27,8 @@
 #define CLK_HZ      49500000u
 
 /* The menu's settings (dist/Cores/Miasmark.NetTerm/interact.json) */
-enum { SET_MODE, SET_PORT, SET_BAUD, SET_ECHO, SET_ENTER, SET_BKSP, SET_COLOR, SET_7 };
+enum { SET_MODE, SET_PORT, SET_BAUD, SET_ECHO, SET_ENTER, SET_BKSP, SET_6, SET_7 };
+enum { MODE_SERIAL, MODE_MODEM };
 
 static inline int setting(int n)
 {

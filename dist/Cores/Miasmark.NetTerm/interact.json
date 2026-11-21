@@ -11,6 +11,27 @@
         "value": 1
       },
       {
+        "name": "Mode",
+        "id": 9,
+        "type": "list",
+        "enabled": true,
+        "persist": true,
+        "writeonly": true,
+        "address": "0x10000100",
+        "defaultval": 0,
+        "mask": "0xFFFFFF00",
+        "options": [
+          {
+            "value": 0,
+            "name": "Serial"
+          },
+          {
+            "value": 1,
+            "name": "FujiNet Modem"
+          }
+        ]
+      },
+      {
         "name": "Port",
         "id": 10,
         "type": "list",

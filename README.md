@@ -50,10 +50,24 @@ FujiNet Pocket cartridge, `fujinet-hardware-analogue-pocket`).
 
 ## Using it
 
+**FujiNet Modem** (0.2): a FujiNet running its RS232 firmware (a FujiNet
+device, or fujinet-pc on a computer) has a Hayes-style modem for the bytes
+that come outside its FujiBus frames. Set Mode to FujiNet Modem, then type
+`ATDT host:port` and Enter (port 23 if left out) to reach a Telnet BBS:
+- In the command state NetTerm edits the line itself and sends it in one
+  burst on Enter: the modem takes each burst as one whole command.
+- The modem answers nothing in the command state (not even `OK`); a good dial
+  prints `CONNECT` after a moment, and the status line shows `MODEM:ON`.
+  From then on keys go straight to the BBS.
+- `NO CARRIER` (the far end hangs up) returns to the command state.
+- The modem needs WiFi set up in the FujiNet (its web page, or CONFIG).
+
+
 **The menu** (the core's settings, kept between sessions):
 
 | Setting | Values |
 |---|---|
+| Mode | Serial; FujiNet Modem (below) |
 | Port | Auto (the line that last started a byte), Link port, Cartridge; Loopback test (TX straight back to RX inside the core: no wires) |
 | Speed | 300 to 921,600 baud (115,200 by default) |
 | Local Echo | Off / On: what you type shows as typed (Enter starts a new line, Backspace erases) |

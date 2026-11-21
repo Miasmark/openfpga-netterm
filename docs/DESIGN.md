@@ -67,12 +67,19 @@ count of X.
 ## Milestones
 
 1. **Serial terminal** (0.1): this.
-2. **FujiNet mode:** a Mode setting. The firmware speaks FujiBus (SLIP frames
+2. **FujiNet Modem mode** (0.2.0): FujiNet's RS232 build hands the bytes that
+   come outside FujiBus frames to its modem (lib/bus/rs232/rs232.cpp,
+   `_rs232_process_cmd`; lib/device/rs232/modem.cpp). In its command state
+   the modem reads each burst (bytes until a 100 ms gap) as one command and
+   prints nothing back for it (`cmdOutput` is off while `modemCommand` runs);
+   online, the bytes pass to the Telnet connection. So: a local line editor
+   until "CONNECT", straight through after, back on "NO CARRIER".
+3. **FujiNet N: mode:** the firmware speaks FujiBus (SLIP frames
    at 115,200, as openFPGA-7800's `fujinet_mailbox.sv` does in hardware) to a
    FujiNet's network device: open `N:TELNET://host:port/` or `N:TCP://...`,
    then pass bytes both ways. A dialling directory, kept in a save file.
-3. **Comfort:** scrollback; XMODEM / YMODEM to and from the save area; an
+4. **Comfort:** scrollback; XMODEM / YMODEM to and from the save area; an
    8 x 16 font at 640 x 480 for the Dock; the mouse (pointing at the
    on-screen keyboard, selecting text); a VT220 keypad mode.
-4. **Later, if FujiNet's firmware allows:** SSH (`N:SSH://`), a faster link
+5. **Later, if FujiNet's firmware allows:** SSH (`N:SSH://`), a faster link
    for FujiNet mode.

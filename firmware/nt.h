@@ -3,7 +3,7 @@
 #define NT_H
 #include <stdint.h>
 
-#define VERSION     "0.1.4"
+#define VERSION     "0.2.0"
 #define COLS        80
 #define TROWS       24              /* the terminal: rows 0-23 (VT100's 80 x 24) */
 #define STATUS_ROW  24
@@ -25,9 +25,13 @@ void term_reset(void);
 void term_putc(uint8_t c);
 void term_show_cursor(int on);
 
-/* main.c: to the host (the serial port), and the local echo */
+/* main.c: to the host (the serial port), and the local echo; user_send is
+   what the keyboards send (through the modem's line editor in Mode FujiNet
+   Modem), host_send what goes out as it is (the terminal's replies) */
 void host_send(const char *s, int n);
 void host_sends(const char *s);
+void user_send(const char *s, int n);
+void user_sends(const char *s);
 
 /* keys.c: the Dock keyboard, the controller and the on-screen keyboard */
 void keys_init(void);

@@ -1,9 +1,19 @@
 /* NetTerm firmware: the main loop.
  *
- * Mode Serial (milestone 1): the serial port is the host. Bytes in go to the
- * terminal; keys go out, and to the terminal too with Local Echo on. The
- * menu's settings (interact.json) are read every frame and applied when they
- * change: the port, the baud rate, the echo, what Enter and Backspace send.
+ * Mode Serial: the serial port is the host. Bytes in go to the terminal; keys
+ * go out, and to the terminal too with Local Echo on.
+ *
+ * Mode FujiNet Modem: the same line, to a FujiNet's RS232 build, whose modem
+ * (fujinet-firmware lib/device/rs232/modem.cpp) takes the bytes that come
+ * outside FujiBus frames. In its command state it reads each burst of bytes
+ * (a gap of 100 ms ends one) as one whole command and answers nothing to it,
+ * so here a command is typed into a local line editor and sent in one burst
+ * on Enter. When "CONNECT" comes back the modem is online and keys go
+ * straight out; "NO CARRIER" puts it back in the command state.
+ *
+ * The menu's settings (interact.json) are read every frame and applied when
+ * they change: the mode, the port, the baud rate, the echo, what Enter and
+ * Backspace send.
  */
 #include "hw.h"
 #include "nt.h"
@@ -46,6 +56,75 @@ void host_sends(const char *s)
     host_send(s, n);
 }
 
+/* ---------------- Mode FujiNet Modem ---------------- */
+
+static int mode, online;
+static char line[128];
+static int llen;
+
+static void raw_send(const char *s, int n)
+{
+    for (int i = 0; i < n; i++) {
+        while (IO_USTAT & 2) ;
+        IO_UDATA = (uint8_t)s[i];
+        n_tx++;
+    }
+}
+
+static void tputs(const char *s) { while (*s) term_putc((uint8_t)*s++); }
+
+void user_send(const char *s, int n)
+{
+    if (mode != MODE_MODEM || online) { host_send(s, n); return; }
+    if (n > 1 && s[0] == 27) return;            /* the arrows and such: nothing to edit with */
+    for (int i = 0; i < n; i++) {
+        uint8_t c = (uint8_t)s[i];
+        if (c == '\r' || (c == '\n' && !(i > 0 && s[i - 1] == '\r'))) {
+            raw_send(line, llen);               /* the whole command, one burst */
+            raw_send("\r", 1);
+            llen = 0;
+            tputs("\r\n");
+        } else if (c == 127 || c == 8) {
+            if (llen) { llen--; tputs("\b \b"); }
+        } else if (c >= 32 && c < 127 && llen < (int)sizeof line - 1) {
+            line[llen++] = (char)c;
+            term_putc(c);
+        }
+    }
+}
+
+void user_sends(const char *s)
+{
+    int n = 0;
+    while (s[n]) n++;
+    user_send(s, n);
+}
+
+/* the modem's word, in the bytes coming back */
+static int match(const char *w, int *pos, uint8_t c)
+{
+    if (c == (uint8_t)w[*pos]) {
+        if (!w[++*pos]) { *pos = 0; return 1; }
+    } else
+        *pos = c == (uint8_t)w[0];
+    return 0;
+}
+
+static void modem_watch(uint8_t c)
+{
+    static int pc, pn;
+    if (mode != MODE_MODEM) return;
+    if (match("CONNECT", &pc, c) && !online) { online = 1; llen = 0; status_draw(); }
+    if (match("NO CARRIER", &pn, c) && online) { online = 0; llen = 0; status_draw(); }
+}
+
+static void mode_banner(void)
+{
+    if (mode == MODE_MODEM)
+        tputs("\r\n\033[1;33mFujiNet modem:\033[0m type ATDT host:port and Enter (port 23 if left out).\r\n"
+              "The modem answers nothing until CONNECT; ATH hangs up, from the command state.\r\n\r\n");
+}
+
 static void utoa10(uint32_t v, char *b)
 {
     char t[12];
@@ -62,13 +141,13 @@ void status_draw(void)
     int port = setting(SET_PORT), inuse = (IO_UCTL >> 23) & 1, bi = setting(SET_BAUD);
     fill_row(STATUS_ROW, 0, COLS, ' ', a);
     text(STATUS_ROW, 1, "NETTERM " VERSION, ATTR(14, 1));
-    text(STATUS_ROW, 16, "SERIAL", a);
-    text(STATUS_ROW, 24, port == 1 ? "LINK" : port == 2 ? "CART" : port == 3 ? "LOOP TEST" : inuse ? "AUTO:CART" : "AUTO:LINK", a);
+    text(STATUS_ROW, 16, mode != MODE_MODEM ? "SERIAL" : online ? "MODEM:ON " : "MODEM:CMD", a);
+    text(STATUS_ROW, 27, port == 1 ? "LINK" : port == 2 ? "CART" : port == 3 ? "LOOP TEST" : inuse ? "AUTO:CART" : "AUTO:LINK", a);
     utoa10(bauds[bi < (int)NBAUD ? bi : 7], b);
-    text(STATUS_ROW, 35, b, a);
-    text(STATUS_ROW, 35 + 7, "8N1", a);
-    text(STATUS_ROW, 47, echo ? "ECHO" : "", a);
-    text(STATUS_ROW, 55, osk_is_open() ? "SELECT: CLOSE KEYS" : "SELECT: KEYBOARD", a);
+    text(STATUS_ROW, 38, b, a);
+    text(STATUS_ROW, 45, "8N1", a);
+    text(STATUS_ROW, 50, echo ? "ECHO" : "", a);
+    text(STATUS_ROW, 57, osk_is_open() ? "SELECT: CLOSE KEYS" : "SELECT: KEYBOARD", a);
 }
 
 /* The line's diagnostics, on the status line's right end each frame:
@@ -103,19 +182,23 @@ static void apply_settings(void)
     uint32_t div = (CLK_HZ + baud / 2) / baud;
     IO_UCTL = div | ((uint32_t)(port <= 3 ? port : 0) << 21);
     echo = setting(SET_ECHO) != 0;
+    int m = setting(SET_MODE) == MODE_MODEM ? MODE_MODEM : MODE_SERIAL;
+    if (m != mode) {
+        mode = m;
+        online = 0;
+        llen = 0;
+        mode_banner();
+    }
 }
 
 int main(void)
 {
     term_reset();
     keys_init();
+    tputs("\033[1;36mNetTerm " VERSION "\033[0m  a serial terminal for the Analogue Pocket\r\n"
+          "Mode, port, speed and echo: the core's menu.  Select: the on-screen keyboard.\r\n");
     apply_settings();
     status_draw();
-    {
-        const char *m = "\033[1;36mNetTerm " VERSION "\033[0m  a serial terminal for the Analogue Pocket\r\n"
-                        "Port, speed and echo: the core's menu.  Select: the on-screen keyboard.\r\n\r\n";
-        while (*m) term_putc((uint8_t)*m++);
-    }
     uint32_t last_frame = IO_FRAMES, last_inuse = 2;
     for (;;) {
         /* the serial port: up to a screenful a pass, so input stays live */
@@ -123,6 +206,7 @@ int main(void)
             uint32_t d = IO_UDATA;
             n_rx++;
             term_putc((uint8_t)d);
+            modem_watch((uint8_t)d);
         }
         keys_poll();
         uint32_t f = IO_FRAMES;
