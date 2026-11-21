@@ -3,7 +3,7 @@
 #define NT_H
 #include <stdint.h>
 
-#define VERSION     "0.1.0"
+#define VERSION     "0.1.1"
 #define COLS        80
 #define TROWS       24              /* the terminal: rows 0-23 (VT100's 80 x 24) */
 #define STATUS_ROW  24

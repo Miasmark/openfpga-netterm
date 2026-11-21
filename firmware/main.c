@@ -14,12 +14,26 @@ static const uint32_t bauds[] = {300, 1200, 2400, 9600, 19200, 38400, 57600, 115
 static uint32_t cur_lo = 0xFFFFFFFF, cur_hi = 0xFFFFFFFF;
 static int echo;
 
+/* Local echo shows what was typed as a typewriter would, not the raw bytes:
+   Enter (CR, CR LF or LF) as a new line, Backspace (DEL or BS) as erasing the
+   character before the cursor. Escape sequences (the arrows) go to the
+   terminal as they are, so they move the cursor. */
+static void echo_byte(uint8_t c)
+{
+    static uint8_t last;
+    if (c == 13) { term_putc(13); term_putc(10); }
+    else if (c == 10) { if (last != 13) { term_putc(13); term_putc(10); } }
+    else if (c == 127 || c == 8) { term_putc(8); term_putc(' '); term_putc(8); }
+    else term_putc(c);
+    last = c;
+}
+
 void host_send(const char *s, int n)
 {
     for (int i = 0; i < n; i++) {
         while (IO_USTAT & 2) ;          /* TX full: wait (64 bytes drain in 5.6 ms at 115,200) */
         IO_UDATA = (uint8_t)s[i];
-        if (echo) term_putc((uint8_t)s[i]);
+        if (echo) echo_byte((uint8_t)s[i]);
     }
 }
 

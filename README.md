@@ -10,8 +10,9 @@ buttons.
 *(From the simulation: the banner, keys typed on a Dock keyboard and echoed
 back through a serial loopback, and the on-screen keyboard open.)*
 
-**Status: 0.1.0, milestone 1** (docs/DESIGN.md). Built and simulated; not yet
-run on a Pocket.
+**Status: 0.1.1, milestone 1** (docs/DESIGN.md). Runs on a Pocket (0.1.0:
+the screen, the Dock keyboard, the on-screen keyboard, the menu, local echo);
+not yet tried with a serial device attached.
 
 ## What it talks to
 
@@ -53,7 +54,7 @@ FujiNet Pocket cartridge, `fujinet-hardware-analogue-pocket`).
 |---|---|
 | Port | Auto (the line that last started a byte), Link port, Cartridge |
 | Speed | 300 to 921,600 baud (115,200 by default) |
-| Local Echo | Off / On |
+| Local Echo | Off / On: what you type shows as typed (Enter starts a new line, Backspace erases) |
 | Enter Sends | CR / CR LF / LF |
 | Backspace Sends | DEL (127) / BS (8) |
 | Reset | restarts the terminal |
