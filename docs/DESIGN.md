@@ -38,7 +38,8 @@ never drove: the transmitter sent (the line check's X counted) and no start
 bit reached SI through a wire loop that the 7800 core's test passed on the
 same Pocket. The link port's translators appear to share the cartridge
 port's supply, which the Pocket leaves off for a core that says it doesn't
-use the cartridge port.
+use the cartridge port. 0.1.4, with 0, works: the wire loop, and a PC
+terminal both ways (2026-11-21).
 
 **Memory map** (`firmware/hw.h`): RAM at `0x0000_0000`, screen at
 `0x1000_0000` (a cell per word), MMIO at `0x2000_0000`: ID, frame and
