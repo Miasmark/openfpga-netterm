@@ -34,17 +34,20 @@ module nt_save_ram #(
 
     logic [31:0] q_b;
     initial dout_b = '0;
-    always_ff @(posedge clk_b) if (rd_b) dout_b <= q_b;
+    always @(posedge clk_b) if (rd_b) dout_b <= q_b;
 
+    // Plain always blocks, as Quartus's dual-clock true dual-port template has
+    // them: two always_ff blocks writing one array fail elaboration
+    // ("Can't resolve multiple constant drivers", 0.4.0's build).
     genvar n;
     generate for (n = 0; n < 4; n++) begin : lane
-        logic [7:0] m [0:(1 << WORD_BITS) - 1];
-        logic [7:0] qa, qb;
-        always_ff @(posedge clk_a) begin
+        reg [7:0] m [0:(1 << WORD_BITS) - 1];
+        reg [7:0] qa, qb;
+        always @(posedge clk_a) begin
             if (we_a[n]) m[addr_a] <= din_a[8 * n +: 8];
             qa <= m[addr_a];
         end
-        always_ff @(posedge clk_b) begin
+        always @(posedge clk_b) begin
             if (we_b) m[addr_b] <= din_b[8 * (3 - n) +: 8];
             qb <= m[addr_b];
         end
