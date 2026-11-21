@@ -114,6 +114,7 @@ whole core, CPU and firmware included, and writes `sim/work/frame.png`.
 | `src/fpga/core/core_top.v` | The APF top level: pins, PLL, settings, reset. |
 | `firmware/` | The C firmware: `term.c` the terminal, `keys.c` the keyboards, `main.c` the loop. |
 | `tools/gen_font.py` | The code page 437 font, from font8x8. |
+| `tools/gen_platform_image.py` | The platform image (a video terminal, `dist/Platforms/_images/netterm.bin`; preview `docs/platform-image.png`). |
 | `dist/` | The core's JSON files and platform. |
 
 ## License
