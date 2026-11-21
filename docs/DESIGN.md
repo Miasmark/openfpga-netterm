@@ -32,6 +32,14 @@ clk_pix 12.375 MHz:              screen RAM port B ── nt_video ── 640 x 
 | **UART** | 8N1; the bit time is a 20-bit divider of 49.5 MHz (300 to 921,600 baud); 64-byte TX FIFO, 1 KiB RX FIFO. TX drives both the link port's SO and cartridge pin 5; RX comes from SI or pin 31: chosen, or Auto (the line that last fell while the other stayed high). |
 | **Controllers** | All four controllers' words and the menu's 8 setting bytes cross from clk_74a as one request / acknowledge copy, so the firmware always reads one poll's words together. |
 
+**core.json: `cartridge_adapter` must be 0** (the core uses the cartridge
+port), as openFPGA-7800 has it. With -1 (0.1.0-0.1.3) the link port's SO
+never drove: the transmitter sent (the line check's X counted) and no start
+bit reached SI through a wire loop that the 7800 core's test passed on the
+same Pocket. The link port's translators appear to share the cartridge
+port's supply, which the Pocket leaves off for a core that says it doesn't
+use the cartridge port.
+
 **Memory map** (`firmware/hw.h`): RAM at `0x0000_0000`, screen at
 `0x1000_0000` (a cell per word), MMIO at `0x2000_0000`: ID, frame and
 millisecond counters, the UART's status / data / control, the controllers'
