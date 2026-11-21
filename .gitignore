@@ -1,0 +1,19 @@
+# Quartus build products
+src/fpga/db/
+src/fpga/incremental_db/
+src/fpga/output_files/
+src/fpga/*.log
+src/fpga/*.qws
+src/fpga/*_assignment_defaults.qdf
+src/fpga/apf/build_id.mif
+# Generated in the build: the PLL (tools/gen_pll.sh) and the firmware image
+# (firmware/build.sh). The font (tools/gen_font.py) is kept.
+src/fpga/core/pll/pll_core.v
+src/fpga/core/firmware.hex
+firmware/build/
+# Packaging / simulation
+release/
+dist/Cores/Miasmark.NetTerm/*.rbf_r
+dist/Cores/Miasmark.NetTerm/licenses/
+sim/work/
+__pycache__/

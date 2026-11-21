@@ -1,0 +1,8 @@
+# NetTerm: the core's files (apf/apf.qip has the framework's)
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) core_top.v]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) core_bridge_cmd.v]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) third_party/picorv32/picorv32.v]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) nt_uart.sv]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) nt_video.sv]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) nt_soc.sv]
+set_global_assignment -name QIP_FILE [file join $::quartus(qip_path) pll/pll_core.qip]

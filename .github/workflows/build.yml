@@ -1,0 +1,75 @@
+name: Build Pocket core
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# Quartus runs in the raetro/quartus:21.1 image through docker run. The job
+# itself stays on the runner: that image's glibc is too old for the Node
+# runtime that actions/checkout and actions/upload-artifact need.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The firmware: clang and lld, RV32IM (firmware/build.sh)
+      - name: Build the firmware
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q clang lld llvm
+          firmware/build.sh
+          python3 tools/gen_font.py
+
+      # ip-generate runs Java, which the image only lets root start: the
+      # container runs as root (docker's default) and the files are given
+      # back to the runner's user after each step.
+      - name: Generate the PLL
+        run: |
+          docker run --rm -v "$PWD:/build" -w /build raetro/quartus:21.1 tools/gen_pll.sh
+          sudo chown -R "$(id -u):$(id -g)" src/fpga
+
+      - name: Quartus compile
+        run: |
+          docker run --rm -v "$PWD:/build" -w /build/src/fpga raetro/quartus:21.1 \
+            quartus_sh --flow compile ap_core
+          sudo chown -R "$(id -u):$(id -g)" src/fpga
+
+      - name: Check timing
+        working-directory: src/fpga
+        run: |
+          cat output_files/ap_core.sta.summary || true
+          if grep -q "Timing requirements not met" output_files/ap_core.sta.rpt; then
+            echo "::warning::Timing requirements not met"
+          fi
+
+      - name: Package
+        run: |
+          tools/package.sh
+          ls -l src/fpga/output_files/ap_core.rbf dist/Cores/Miasmark.NetTerm/
+          unzip -l release/*.zip
+
+      # A rolling pre-release of the latest build on main, so the zip can be
+      # downloaded without signing in (workflow artifacts need a login).
+      - name: Publish the development build
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete dev --yes --cleanup-tag || true
+          gh release create dev release/*.zip --prerelease --target "$GITHUB_SHA" \
+            --title "Development build" --notes "Latest build of main ($GITHUB_SHA). Unzip and copy Cores and Platforms to the SD card."
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NetTerm_Pocket
+          path: release/*.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pll_core
+          path: src/fpga/core/pll/pll_core.v

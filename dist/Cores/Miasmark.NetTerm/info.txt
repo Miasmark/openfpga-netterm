@@ -1,0 +1,8 @@
+NetTerm 0.1.0
+
+A serial terminal (ANSI / VT100) for the Analogue Pocket: 80 x 24 with a
+status line, on the link port or the cartridge slot, 300 to 921,600 baud,
+3.3 V TTL levels. Type on a USB keyboard in the Dock, or on the on-screen
+keyboard (Select). Port, speed, echo and line endings are in the core's menu.
+
+https://github.com/Miasmark/openfpga-netterm

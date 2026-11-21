@@ -1,0 +1,165 @@
+{
+  "interact": {
+    "magic": "APF_VER_1",
+    "variables": [
+      {
+        "name": "Reset",
+        "id": 1,
+        "type": "action",
+        "enabled": true,
+        "address": "0x10000200",
+        "value": 1
+      },
+      {
+        "name": "Port",
+        "id": 10,
+        "type": "list",
+        "enabled": true,
+        "persist": true,
+        "writeonly": true,
+        "address": "0x10000104",
+        "defaultval": 0,
+        "mask": "0xFFFFFF00",
+        "options": [
+          {
+            "value": 0,
+            "name": "Auto"
+          },
+          {
+            "value": 1,
+            "name": "Link port"
+          },
+          {
+            "value": 2,
+            "name": "Cartridge"
+          }
+        ]
+      },
+      {
+        "name": "Speed",
+        "id": 11,
+        "type": "list",
+        "enabled": true,
+        "persist": true,
+        "writeonly": true,
+        "address": "0x10000108",
+        "defaultval": 7,
+        "mask": "0xFFFFFF00",
+        "options": [
+          {
+            "value": 0,
+            "name": "300"
+          },
+          {
+            "value": 1,
+            "name": "1200"
+          },
+          {
+            "value": 2,
+            "name": "2400"
+          },
+          {
+            "value": 3,
+            "name": "9600"
+          },
+          {
+            "value": 4,
+            "name": "19200"
+          },
+          {
+            "value": 5,
+            "name": "38400"
+          },
+          {
+            "value": 6,
+            "name": "57600"
+          },
+          {
+            "value": 7,
+            "name": "115200"
+          },
+          {
+            "value": 8,
+            "name": "230400"
+          },
+          {
+            "value": 9,
+            "name": "460800"
+          },
+          {
+            "value": 10,
+            "name": "921600"
+          }
+        ]
+      },
+      {
+        "name": "Local Echo",
+        "id": 12,
+        "type": "list",
+        "enabled": true,
+        "persist": true,
+        "writeonly": true,
+        "address": "0x1000010C",
+        "defaultval": 0,
+        "mask": "0xFFFFFF00",
+        "options": [
+          {
+            "value": 0,
+            "name": "Off"
+          },
+          {
+            "value": 1,
+            "name": "On"
+          }
+        ]
+      },
+      {
+        "name": "Enter Sends",
+        "id": 13,
+        "type": "list",
+        "enabled": true,
+        "persist": true,
+        "writeonly": true,
+        "address": "0x10000110",
+        "defaultval": 0,
+        "mask": "0xFFFFFF00",
+        "options": [
+          {
+            "value": 0,
+            "name": "CR"
+          },
+          {
+            "value": 1,
+            "name": "CR LF"
+          },
+          {
+            "value": 2,
+            "name": "LF"
+          }
+        ]
+      },
+      {
+        "name": "Backspace Sends",
+        "id": 14,
+        "type": "list",
+        "enabled": true,
+        "persist": true,
+        "writeonly": true,
+        "address": "0x10000114",
+        "defaultval": 0,
+        "mask": "0xFFFFFF00",
+        "options": [
+          {
+            "value": 0,
+            "name": "DEL (127)"
+          },
+          {
+            "value": 1,
+            "name": "BS (8)"
+          }
+        ]
+      }
+    ],
+    "messages": []
+  }
+}

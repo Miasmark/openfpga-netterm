@@ -1,0 +1,47 @@
+{
+  "input": {
+    "magic": "APF_VER_1",
+    "controllers": [
+      {
+        "type": "default",
+        "mappings": [
+          {
+            "id": 0,
+            "name": "Enter / type the key",
+            "key": "pad_btn_a"
+          },
+          {
+            "id": 1,
+            "name": "Backspace",
+            "key": "pad_btn_b"
+          },
+          {
+            "id": 2,
+            "name": "Esc / Shift",
+            "key": "pad_btn_x"
+          },
+          {
+            "id": 3,
+            "name": "Space",
+            "key": "pad_btn_y"
+          },
+          {
+            "id": 4,
+            "name": "Tab / Ctrl",
+            "key": "pad_trig_l"
+          },
+          {
+            "id": 5,
+            "name": "Shift lock",
+            "key": "pad_trig_r"
+          },
+          {
+            "id": 6,
+            "name": "On-screen keyboard",
+            "key": "pad_btn_select"
+          }
+        ]
+      }
+    ]
+  }
+}

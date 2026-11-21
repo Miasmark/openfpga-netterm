@@ -1,0 +1,36 @@
+{
+  "core": {
+    "magic": "APF_VER_1",
+    "metadata": {
+      "platform_ids": [
+        "netterm"
+      ],
+      "shortname": "NetTerm",
+      "description": "A serial terminal: ANSI / VT100, Dock keyboard, on-screen keys.",
+      "author": "Miasmark",
+      "url": "https://github.com/Miasmark/openfpga-netterm",
+      "version": "0.1.0",
+      "date_release": "2026-11-21"
+    },
+    "framework": {
+      "target_product": "Analogue Pocket",
+      "version_required": "1.1",
+      "sleep_supported": false,
+      "dock": {
+        "supported": true,
+        "analog_output": false
+      },
+      "hardware": {
+        "link_port": true,
+        "cartridge_adapter": -1
+      }
+    },
+    "cores": [
+      {
+        "name": "default",
+        "id": 0,
+        "filename": "netterm.rbf_r"
+      }
+    ]
+  }
+}
