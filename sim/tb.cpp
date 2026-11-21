@@ -27,12 +27,16 @@ int main(int argc, char **argv) {
     t->cont1_key = 0x10000000;                // a Pocket pad
     t->reset = 1;
     // the keyboard: "hello" then Enter, 60 ms per key (NT_MODEM: "atdt bbs", Enter, "hi")
-    const bool feed = getenv("NT_FEED") != nullptr;    // NT_FEED=n: n numbered lines arrive, then R + Left, R + Up x2
-    const bool modem = getenv("NT_MODEM") != nullptr || feed;
+    const bool feed = getenv("NT_FEED") != nullptr;
+    const bool book = getenv("NT_BOOK") != nullptr;     // Start: the address book, then A: dial    // NT_FEED=n: n numbered lines arrive, then R + Left, R + Up x2
+    const bool modem = getenv("NT_MODEM") != nullptr || feed || book;
     static const uint8_t typed_hello[] = {0x0B, 0x08, 0x0F, 0x0F, 0x12, 0x28, 0x1B, 0x1C, 0x1D};
     static const uint8_t typed_modem[] = {0x04, 0x17, 0x07, 0x17, 0x2C, 0x05, 0x05, 0x16, 0x28, 0x0B, 0x0C};
-    const uint8_t *typed = modem ? typed_modem : typed_hello;
-    const int ntyped = feed ? 0 : modem ? sizeof typed_modem : sizeof typed_hello;
+    // NT_BOOK_EDIT: in the book, Tab (add), "abc", Enter, "xy", Enter (save)
+    static const uint8_t typed_edit[] = {0, 0, 0, 0x2B, 0x04, 0x05, 0x06, 0x28, 0x1B, 0x1C, 0x28};
+    const bool bedit = getenv("NT_BOOK_EDIT") != nullptr;
+    const uint8_t *typed = bedit ? typed_edit : modem ? typed_modem : typed_hello;
+    const int ntyped = bedit ? sizeof typed_edit : (feed || book) ? 0 : modem ? sizeof typed_modem : sizeof typed_hello;
     // the fake FujiNet modem: one command per burst (a 100 ms gap ends it), silent in the
     // command state; ATDT -> "CONNECT 115200" and a greeting, then it echoes like a BBS
     const int BIT = 430 * 6;               // ticks per bit at 115,200
@@ -58,7 +62,10 @@ int main(int argc, char **argv) {
         t->cont3_trig = 0;
         // controller 1: Select at 450 ms, Right at 480 and 510, A at 540
         uint32_t b = 0;
-        if (feed) {
+        if (book) {
+            if (ms > 200 && ms < 210) b |= 1u << 15;                      // Start
+            if (getenv("NT_BOOK_DIAL") && ms > 300 && ms < 310) b |= 1u << 4;   // A
+        } else if (feed) {
             if (ms > 300 && ms < 600) b |= 1u << 9;                       // R held
             if (ms > 320 && ms < 330) b |= 1u << 2;                       // Left: a page back
             if ((ms > 400 && ms < 410) || (ms > 450 && ms < 460)) b |= 1u << 0;   // Up, Up

@@ -1,6 +1,20 @@
 {
   "data": {
     "magic": "APF_VER_1",
-    "data_slots": []
+    "data_slots": [
+      {
+        "name": "Address Book",
+        "id": "0x100",
+        "required": false,
+        "filename": "addressbook.sav",
+        "parameters": "0x80",
+        "nonvolatile": true,
+        "extensions": [
+          "sav"
+        ],
+        "size_maximum": "0x800",
+        "address": "0x20000000"
+      }
+    ]
   }
 }

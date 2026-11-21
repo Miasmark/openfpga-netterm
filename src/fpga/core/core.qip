@@ -4,5 +4,6 @@ set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) core_br
 set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) third_party/picorv32/picorv32.v]
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) nt_uart.sv]
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) nt_video.sv]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) nt_save_ram.sv]
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) nt_soc.sv]
 set_global_assignment -name QIP_FILE [file join $::quartus(qip_path) pll/pll_core.qip]

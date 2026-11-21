@@ -347,6 +347,7 @@ synch_3 s01(pll_core_locked, pll_core_locked_s, clk_74a);
 //   0x10000100 + 4n  setting n (interact.json), 8 bits each; read by the
 //                    firmware (firmware/hw.h, SET_*)
 //   0x10000200       Reset: restarts the firmware
+//   0x20000000       the save slot, 2 KiB (data.json "Address Book"; nt_save_ram.sv)
 //   0xF8000000       APF command interface
 
     reg     [63:0]  settings = 64'h0000_0000_0007_0000;   // defaults: interact.json's
@@ -361,8 +362,14 @@ always @(posedge clk_74a) begin
     end
 end
 
+    wire    [31:0]  save_rd_latched;
+    wire            save_sel = bridge_addr[31:24] == 8'h20;
+
 always @(*) begin
     casex(bridge_addr)
+    32'h20xxxxxx: begin
+        bridge_rd_data <= save_rd_latched;
+    end
     32'hF8xxxxxx: begin
         bridge_rd_data <= cmd_bridge_rd_data;
     end
@@ -449,9 +456,11 @@ end
 // bridge data slot access
 // synchronous to clk_74a
 
-    wire    [9:0]   datatable_addr = 10'd0;
-    wire            datatable_wren = 1'b0;
-    wire    [31:0]  datatable_data = 32'd0;
+// the save slot's size, so the Pocket writes the file even before one
+// exists: data slot index 0, its size field (as openFPGA-7800 does)
+    wire    [9:0]   datatable_addr = 10'd1;
+    wire            datatable_wren = 1'b1;
+    wire    [31:0]  datatable_data = 32'd2048;
     wire    [31:0]  datatable_q;
 
 core_bridge_cmd icb (
@@ -558,6 +567,11 @@ nt_soc soc (
     .cont1_joy  ( cont1_joy ),  .cont2_joy  ( cont2_joy ),  .cont3_joy  ( cont3_joy ),  .cont4_joy  ( cont4_joy ),
     .cont1_trig ( cont1_trig ), .cont2_trig ( cont2_trig ), .cont3_trig ( cont3_trig ), .cont4_trig ( cont4_trig ),
     .settings   ( settings ),
+    .save_addr  ( bridge_addr[10:2] ),
+    .save_din   ( bridge_wr_data ),
+    .save_wr    ( bridge_wr && save_sel ),
+    .save_rd    ( bridge_rd && save_sel ),
+    .save_dout  ( save_rd_latched ),
     .txd        ( nt_txd ),
     .rxd_link   ( port_tran_si ),
     .rxd_cart   ( cart_tran_pin31 ),

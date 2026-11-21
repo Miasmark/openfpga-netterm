@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 OUT=../src/fpga/core/firmware.hex
 mkdir -p build
 CFLAGS="--target=riscv32-unknown-elf -march=rv32im -mabi=ilp32 -Os -ffreestanding -fno-builtin -nostdlib -Wall -Wextra -Wno-unused-parameter -fno-pic -mno-relax"
-for f in crt0.S lib.c screen.c term.c scrollback.c keys.c main.c; do
+for f in crt0.S lib.c screen.c term.c scrollback.c book.c keys.c main.c; do
     clang $CFLAGS -c "$f" -o "build/${f%.*}.o"
 done
 ld.lld -m elf32lriscv -T link.ld --no-relax -o build/netterm.elf build/*.o

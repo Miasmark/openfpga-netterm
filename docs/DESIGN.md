@@ -53,6 +53,7 @@ key / joy / trig words, the settings, the cursor.
 | `crt0.S`, `link.ld`, `lib.c` | Start-up, the memory layout, memset / memcpy (no C library). |
 | `term.c` | The terminal: a VT100 / ANSI-BBS subset in rows 0-23 (see its header for the sequences). |
 | `keys.c` | The Dock keyboard (HID codes to ASCII and VT sequences, repeat), controller 1, and the on-screen keyboard in rows 25-29. |
+| `book.c` | The address book, in the save slot (data.json "Address Book", 2 KiB at 0x3000_0000 for the CPU, 0x2000_0000 for the bridge; `nt_save_ram.sv`). |
 | `scrollback.c` | The 200 lines scrolled off the top (32 KB of the RAM), and the view back through them. |
 | `main.c` | The loop: the UART into the terminal, the keys out; the menu's settings applied when they change; the status line (row 24). |
 

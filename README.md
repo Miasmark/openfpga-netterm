@@ -80,6 +80,15 @@ that come outside its FujiBus frames. Set Mode to FujiNet Modem, then type
 | Backspace Sends | DEL (127) / BS (8) |
 | Reset | restarts the terminal |
 
+**Address book** (0.4): Start (or Alt+D on the Dock keyboard) opens it over
+the terminal. Up / Down choose; Enter (A) dials (`ATDT address`, one burst);
+Space (Y) edits; Tab (L) adds; Delete removes; Esc (X) or Backspace (B)
+closes. Editing: type the name and the address (`host` or `host:port`), Up /
+Down or Tab between them, Enter on the address saves, an empty address
+removes the entry, Esc cancels. Up to 30 entries, kept in the core's save
+file (`Saves/netterm/common/addressbook.sav`), which the Pocket writes when
+the core is quit.
+
 **Scrollback** (0.3): the last 200 lines that scrolled off the top. Shift +
 Page Up / Page Down a page, Shift + Up / Down a line, Shift + Home the oldest,
 Shift + End back to the live screen; on the Pocket's buttons, hold R and use
@@ -104,6 +113,7 @@ Keys repeat after half a second.
 | L | Tab | Ctrl, once |
 | R | held + D-pad: scrollback | Shift lock |
 | Select | open | close |
+| Start | the address book | the address book |
 
 **The screen:** rows 1-24 are the terminal; row 25 is the status line (port,
 speed, echo); rows 26-30 hold the on-screen keyboard.

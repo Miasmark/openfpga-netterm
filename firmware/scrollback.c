@@ -13,7 +13,9 @@
 static uint16_t hist[SB_LINES][COLS];
 static int head;                    /* the next line to write */
 static int count;                   /* lines kept */
-static uint16_t live[TROWS][COLS];
+/* the live rows while looking back; book.c borrows it too (the book leaves
+   the scrollback before it opens, so the two never use it at once) */
+uint16_t sb_live[TROWS][COLS];
 static int offset;                  /* lines back from the live screen; 0 = live */
 
 void sb_push_row(int row)
@@ -35,7 +37,7 @@ static void draw(void)
 {
     for (int r = 0; r < TROWS; r++) {
         int i = count - offset + r;
-        const uint16_t *src = i < count ? line_at(i) : live[i - count];
+        const uint16_t *src = i < count ? line_at(i) : sb_live[i - count];
         for (int c = 0; c < COLS; c++)
             cell_set_raw(r, c, src[c]);
     }
@@ -52,7 +54,7 @@ void sb_scroll(int delta)           /* + = back in time */
     if (!was) {                     /* entering: keep the live screen */
         for (int r = 0; r < TROWS; r++)
             for (int c = 0; c < COLS; c++)
-                live[r][c] = (uint16_t)cell_get(r, c);
+                sb_live[r][c] = (uint16_t)cell_get(r, c);
         term_show_cursor(0);
     }
     offset = o;

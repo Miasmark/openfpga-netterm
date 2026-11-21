@@ -3,7 +3,7 @@
 #define NT_H
 #include <stdint.h>
 
-#define VERSION     "0.3.0"
+#define VERSION     "0.4.0"
 #define COLS        80
 #define TROWS       24              /* the terminal: rows 0-23 (VT100's 80 x 24) */
 #define STATUS_ROW  24
@@ -48,6 +48,16 @@ void user_sends(const char *s);
 void keys_init(void);
 void keys_poll(void);
 int osk_is_open(void);
+
+/* book.c: the address book, in the save slot */
+int book_is_open(void);
+void book_open(void);
+void book_close(void);
+void book_toggle(void);
+void book_key(int k, int k_up, int k_down, int k_enter, int k_bksp, int k_del);
+
+/* main.c: dial an address (ATDT, one burst) */
+void modem_dial(const char *addr);
 
 /* main.c: the status line */
 void status_draw(void);

@@ -118,6 +118,19 @@ static void modem_watch(uint8_t c)
     if (match("NO CARRIER", &pn, c) && online) { online = 0; llen = 0; status_draw(); }
 }
 
+void modem_dial(const char *addr)
+{
+    char b[64];
+    int n = 0;
+    for (const char *p = "ATDT "; *p; p++) b[n++] = *p;
+    for (const char *p = addr; *p && n < (int)sizeof b - 2; p++) b[n++] = *p;
+    b[n++] = '\r';
+    if (llen) { llen = 0; tputs("\r\n"); }   /* a half-typed command line is dropped */
+    for (int i = 0; i < n - 1; i++) term_putc((uint8_t)b[i]);
+    tputs("\r\n");
+    raw_send(b, n);                     /* one burst, as the modem wants */
+}
+
 static void mode_banner(void)
 {
     if (mode == MODE_MODEM)
@@ -147,7 +160,9 @@ void status_draw(void)
     text(STATUS_ROW, 38, b, a);
     text(STATUS_ROW, 45, "8N1", a);
     text(STATUS_ROW, 50, echo ? "ECHO" : "", a);
-    if (sb_active()) {
+    if (book_is_open())
+        text(STATUS_ROW, 57, "ADDRESS BOOK", ATTR(14, 1));
+    else if (sb_active()) {
         char n[12];
         utoa10(sb_offset(), n);
         text(STATUS_ROW, 57, "BACK", ATTR(14, 1));
@@ -213,7 +228,8 @@ int main(void)
         /* the serial port: up to a screenful a pass, so input stays live */
         /* looking back: the input waits in the FIFO, unless it is filling up */
         if (sb_active() && ((IO_USTAT >> 16) & 0x7FF) > 768) sb_exit();
-        for (int n = 0; n < 256 && !sb_active() && (IO_USTAT & 1); n++) {
+        if (book_is_open() && ((IO_USTAT >> 16) & 0x7FF) > 768) { book_close(); status_draw(); }
+        for (int n = 0; n < 256 && !sb_active() && !book_is_open() && (IO_USTAT & 1); n++) {
             uint32_t d = IO_UDATA;
             n_rx++;
             term_putc((uint8_t)d);

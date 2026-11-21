@@ -12,7 +12,8 @@
  * Controller 1 (the Pocket's own buttons, or a Dock controller):
  *   keyboard closed: D-pad = the arrow keys, A = Enter, B = Backspace,
  *     Y = Space, X = Esc, L = Tab, Select = open the on-screen keyboard,
- *     R held + D-pad = the scrollback (up / down a line, left / right a page)
+ *     R held + D-pad = the scrollback (up / down a line, left / right a page),
+ *     Start = the address book (book.c; also Alt+D on the Dock keyboard)
  *   keyboard open:   D-pad = move, A = type the key, B = Backspace,
  *     Y = Space, X = Shift (once), L = Ctrl (once), R = Shift lock,
  *     Select = close
@@ -28,10 +29,18 @@ enum {
     K_F1, K_F2, K_F3, K_F4, K_F5, K_F6, K_F7, K_F8, K_F9, K_F10, K_F11, K_F12,
     K_ENTER, K_BKSP, K_SHIFT, K_CTRL, K_HIDE,
     K_SB_UP, K_SB_DOWN, K_SB_PGUP, K_SB_PGDN, K_SB_TOP, K_SB_END,     /* scrollback */
+    K_BOOK,                                                         /* the address book */
 };
 
 static void key_out(int k)
 {
+    if (k == K_BOOK) { book_toggle(); status_draw(); return; }
+    if (book_is_open()) {               /* the book takes every key while it is up */
+        if (k >= K_SB_UP && k <= K_SB_END) return;
+        book_key(k, K_UP, K_DOWN, K_ENTER, K_BKSP, K_DEL);
+        if (!book_is_open()) status_draw();
+        return;
+    }
     switch (k) {                        /* scrollback: looking back, nothing sent */
     case K_SB_UP: sb_scroll(1); return;
     case K_SB_DOWN: sb_scroll(-1); return;
@@ -70,7 +79,8 @@ static const char hid_hi[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()\r\033\b\t _+{
 
 static int hid_key(uint8_t u, uint8_t mods)
 {
-    int shift = (mods & 0x22) != 0, ctrl = (mods & 0x11) != 0;
+    int shift = (mods & 0x22) != 0, ctrl = (mods & 0x11) != 0, alt = (mods & 0x44) != 0;
+    if (alt && u == 0x07) return K_BOOK;                    /* Alt+D: the address book */
     if (shift) {                        /* Shift + the movement keys: the scrollback */
         switch (u) {
         case 0x52: return K_SB_UP;
@@ -278,6 +288,7 @@ static void pad_press(int b)
         case B_L: osk_ctrl = !osk_ctrl; break;
         case B_R: osk_lock = !osk_lock; break;
         case B_SELECT: osk_open = 0; break;
+        case B_START: key_out(K_BOOK); break;
         default: break;
         }
     } else {
@@ -292,6 +303,7 @@ static void pad_press(int b)
         case B_X: key_out(27); break;
         case B_L: key_out('\t'); break;
         case B_SELECT: osk_open = 1; break;
+        case B_START: key_out(K_BOOK); break;
         default: break;
         }
     }

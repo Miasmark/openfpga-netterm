@@ -5,6 +5,8 @@
 
 #define REG(o)      (*(volatile uint32_t *)(0x20000000u + (o)))
 #define SCR         ((volatile uint32_t *)0x10000000u)   /* cell n = row * 80 + col */
+#define SAVE        ((volatile uint8_t *)0x30000000u)    /* the save slot, 2 KiB (data.json: Address Book) */
+#define SAVE_SIZE   2048
 
 #define IO_ID       REG(0x00)       /* "NT01" */
 #define IO_FRAMES   REG(0x04)       /* video frames, 60.2 per second */

@@ -13,6 +13,7 @@
 //                bits [7:0] the CP437 character, [11:8] foreground, [15:12]
 //                background (CGA colours); 80 x 30 cells
 //   0x2000_0000  MMIO (below)
+//   0x3000_0000  the save RAM, 2 KiB: the Pocket's save slot (nt_save_ram.sv)
 
 `default_nettype none
 
@@ -30,6 +31,13 @@ module nt_soc #(
     input  wire [31:0] cont1_joy, cont2_joy, cont3_joy, cont4_joy,
     input  wire [15:0] cont1_trig, cont2_trig, cont3_trig, cont4_trig,
     input  wire [63:0] settings,
+
+    // the save slot's RAM, bridge side (clk_74a; nt_save_ram.sv)
+    input  wire  [8:0] save_addr,
+    input  wire [31:0] save_din,
+    input  wire        save_wr,
+    input  wire        save_rd,
+    output wire [31:0] save_dout,
 
     // the serial port: TX goes out on both ports; RX from the one chosen
     output wire        txd,
@@ -127,6 +135,7 @@ module nt_soc #(
     wire sel_ram = mem_addr[31:28] == 4'h0;
     wire sel_scr = mem_addr[31:28] == 4'h1;
     wire sel_io  = mem_addr[31:28] == 4'h2;
+    wire sel_sav = mem_addr[31:28] == 4'h3;
     wire go      = mem_valid && !mem_ready;
 
     // RAM: 16 K words, byte writes (packed bytes: Quartus' byte-enable form)
@@ -152,6 +161,22 @@ module nt_soc #(
         if (go && sel_scr && mem_wstrb[0]) scr[scr_aa] <= mem_wdata[15:0];
         scr_qa <= scr[scr_aa];
     end
+    // The save RAM
+    wire  [31:0] sav_q;
+    nt_save_ram save_ram (
+        .clk_a  (clk_sys),
+        .addr_a (mem_addr[10:2]),
+        .din_a  (mem_wdata),
+        .we_a   (go && sel_sav ? mem_wstrb : 4'd0),
+        .dout_a (sav_q),
+        .clk_b  (clk_74a),
+        .addr_b (save_addr),
+        .din_b  (save_din),
+        .we_b   (save_wr),
+        .rd_b   (save_rd),
+        .dout_b (save_dout)
+    );
+
     wire  [11:0] scr_ab;
     logic [15:0] scr_qb;
     always_ff @(posedge clk_pix) scr_qb <= scr[scr_ab];
@@ -292,13 +317,14 @@ module nt_soc #(
     logic [1:0]  rsel = '0;
     logic [31:0] io_qr = '0;
     always_ff @(posedge clk_sys) begin
-        rsel  <= sel_scr ? 2'd1 : sel_io ? 2'd2 : 2'd0;
+        rsel  <= sel_scr ? 2'd1 : sel_io ? 2'd2 : sel_sav ? 2'd3 : 2'd0;
         io_qr <= io_q;
     end
     always_comb begin
         unique case (rsel)
             2'd1:    mem_rdata = {16'd0, scr_qa};
             2'd2:    mem_rdata = io_qr;
+            2'd3:    mem_rdata = sav_q;
             default: mem_rdata = ram_q;
         endcase
     end
