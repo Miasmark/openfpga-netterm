@@ -23,6 +23,7 @@ module nt_uart (
     output wire [10:0] count,
     output logic       ovf,
     input  wire        ovf_clr,
+    output logic [15:0] tsent,              // bytes the transmitter started (diagnostics; wrap)
     output logic [15:0] starts,             // start bits seen (diagnostics; wrap)
     output logic [15:0] ferrs               // bytes dropped for a bad stop bit
 );
@@ -38,11 +39,13 @@ module nt_uart (
     logic [3:0]  tbit = '0;                 // 0 idle, 1 start, 2-9 data, 10 stop
     logic [7:0]  tsh = '0;
     initial txd = 1'b1;
+    initial tsent = '0;
     always_ff @(posedge clk) begin
         if (push && !full) tw <= tw + 6'd1;
         if (tbit == 4'd0) begin
             txd <= 1'b1;
             if (tw != tr) begin
+                tsent <= tsent + 16'd1;
                 tsh  <= tq[tr];
                 tr   <= tr + 6'd1;
                 tbit <= 4'd1;

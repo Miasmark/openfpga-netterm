@@ -183,14 +183,14 @@ module nt_soc #(
 
     // the serial port
     logic [19:0] u_div = 20'd430;           // 49.5 MHz / 115,200
-    logic [1:0]  u_mode = 2'd0;             // RX from: 0 auto, 1 the link port, 2 the cartridge
+    logic [1:0]  u_mode = 2'd0;             // RX from: 0 auto, 1 the link port, 2 the cartridge, 3 TX itself (a test)
     logic        u_port = 1'b0;             // the port in use: 0 link, 1 cartridge
     logic        u_push = 1'b0, u_pop = 1'b0;
     logic [7:0]  u_wdata = '0;
     wire  [7:0]  u_rdata;
     wire         u_avail, u_full, u_ovf;
     wire  [10:0] u_count;
-    wire  [15:0] u_starts, u_ferrs;
+    wire  [15:0] u_starts, u_ferrs, u_tsent;
     logic        u_ovf_clr = 1'b0;
     logic [2:0]  rl_s = 3'b111, rc_s = 3'b111;
     // auto: the port whose line last fell (a start bit) while the other
@@ -210,7 +210,7 @@ module nt_soc #(
         .reset   (reset),
         .div     (u_div),
         .txd     (txd),
-        .rxd     (u_port ? rc_s[2] : rl_s[2]),
+        .rxd     (u_mode == 2'd3 ? txd : u_port ? rc_s[2] : rl_s[2]),
         .push    (u_push),
         .wdata   (u_wdata),
         .full    (u_full),
@@ -220,6 +220,7 @@ module nt_soc #(
         .count   (u_count),
         .ovf     (u_ovf),
         .ovf_clr (u_ovf_clr),
+        .tsent   (u_tsent),
         .starts  (u_starts),
         .ferrs   (u_ferrs)
     );
@@ -255,6 +256,7 @@ module nt_soc #(
             6'h14: io_q = set_sys[31:0];
             6'h15: io_q = set_sys[63:32];
             6'h18: io_q = {15'd0, cur_on, 3'd0, cur_y, 1'b0, cur_x};
+            6'h19: io_q = {16'd0, u_tsent};
             default: io_q = 32'd0;
         endcase
     end

@@ -32,6 +32,10 @@
           {
             "value": 2,
             "name": "Cartridge"
+          },
+          {
+            "value": 3,
+            "name": "Loopback test"
           }
         ]
       },

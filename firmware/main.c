@@ -63,7 +63,7 @@ void status_draw(void)
     fill_row(STATUS_ROW, 0, COLS, ' ', a);
     text(STATUS_ROW, 1, "NETTERM " VERSION, ATTR(14, 1));
     text(STATUS_ROW, 16, "SERIAL", a);
-    text(STATUS_ROW, 24, port == 1 ? "LINK" : port == 2 ? "CART" : inuse ? "AUTO:CART" : "AUTO:LINK", a);
+    text(STATUS_ROW, 24, port == 1 ? "LINK" : port == 2 ? "CART" : port == 3 ? "LOOP TEST" : inuse ? "AUTO:CART" : "AUTO:LINK", a);
     utoa10(bauds[bi < (int)NBAUD ? bi : 7], b);
     text(STATUS_ROW, 35, b, a);
     text(STATUS_ROW, 35 + 7, "8N1", a);
@@ -72,7 +72,7 @@ void status_draw(void)
 }
 
 /* The line's diagnostics, on the status line's right end each frame:
-   T sent, R received, S start bits seen, F bad stop bits, then the levels of
+   T handed to the port, X bytes the transmitter started, R received, S start bits seen, F bad stop bits, then the levels of
    the link port's SI and the cartridge's pin 31 (1 = high, idle). */
 static void hex4(char *b, uint32_t v)
 {
@@ -85,6 +85,7 @@ static void diag_draw(void)
     uint32_t d = IO_UDIAG, st = IO_USTAT;
     int n = 0;
     b[n++] = 'T'; hex4(b + n, n_tx); n += 4; b[n++] = ' ';
+    b[n++] = 'X'; hex4(b + n, IO_UTXN); n += 4; b[n++] = ' ';
     b[n++] = 'R'; hex4(b + n, n_rx); n += 4; b[n++] = ' ';
     b[n++] = 'S'; hex4(b + n, d); n += 4; b[n++] = ' ';
     b[n++] = 'F'; hex4(b + n, d >> 16); n += 4; b[n++] = ' ';
@@ -100,7 +101,7 @@ static void apply_settings(void)
     int bi = setting(SET_BAUD), port = setting(SET_PORT);
     uint32_t baud = bauds[bi < (int)NBAUD ? bi : 7];
     uint32_t div = (CLK_HZ + baud / 2) / baud;
-    IO_UCTL = div | ((uint32_t)(port <= 2 ? port : 0) << 21);
+    IO_UCTL = div | ((uint32_t)(port <= 3 ? port : 0) << 21);
     echo = setting(SET_ECHO) != 0;
 }
 

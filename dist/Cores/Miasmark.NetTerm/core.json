@@ -9,7 +9,7 @@
       "description": "A serial terminal: ANSI / VT100, Dock keyboard, on-screen keys.",
       "author": "Miasmark",
       "url": "https://github.com/Miasmark/openfpga-netterm",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "date_release": "2026-11-21"
     },
     "framework": {

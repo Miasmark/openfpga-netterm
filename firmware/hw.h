@@ -13,7 +13,7 @@
 #define IO_USTAT    REG(0x10)       /* [0] RX byte waiting, [1] TX full, [2] RX overflow (cleared by the read),
                                        [8] link SI level, [9] cartridge pin 31 level, [26:16] RX count */
 #define IO_UDATA    REG(0x14)       /* read: [7:0] the next RX byte, [8] it was there; write: send [7:0] */
-#define IO_UCTL     REG(0x18)       /* [19:0] clocks per bit, [22:21] RX port 0 auto / 1 link / 2 cartridge,
+#define IO_UCTL     REG(0x18)       /* [19:0] clocks per bit, [22:21] RX port 0 auto / 1 link / 2 cartridge / 3 TX looped back inside,
                                        [23] (read) the port in use: 0 link, 1 cartridge */
 #define IO_UDIAG    REG(0x1C)       /* [15:0] RX start bits seen, [31:16] RX bytes dropped for a bad stop bit */
 #define IO_KEY(n)   REG(0x20 + 4 * (n))     /* controllers 0-3: cont_key */
@@ -22,6 +22,7 @@
 #define IO_SET_LO   REG(0x50)       /* the menu's settings 0-3, a byte each */
 #define IO_SET_HI   REG(0x54)       /* settings 4-7 */
 #define IO_CURSOR   REG(0x60)       /* [6:0] column, [12:8] row, [16] shown */
+#define IO_UTXN     REG(0x64)       /* [15:0] bytes the transmitter has started */
 
 #define CLK_HZ      49500000u
 

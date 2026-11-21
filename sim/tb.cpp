@@ -20,7 +20,8 @@ int main(int argc, char **argv) {
     std::vector<uint32_t> fb(W * H), last(W * H);
     int x = 0, y = -1, frames = 0;
     bool in_frame = false;
-    t->settings = 0x0000000000070000ULL;      // serial, auto port, 115200
+    const char *ls = getenv("NT_SETTINGS");
+    t->settings = ls ? strtoull(ls, 0, 16) : 0x0000000000070000ULL;   // serial, auto port, 115200
     t->cont1_key = 0x10000000;                // a Pocket pad
     t->reset = 1;
     // the keyboard: "hello" then Enter, 60 ms per key
@@ -41,7 +42,7 @@ int main(int argc, char **argv) {
         if ((ms > 480 && ms < 490) || (ms > 510 && ms < 520)) b = 1u << 3;
         if (ms > 540 && ms < 550) b = 1u << 4;
         t->cont1_key = 0x10000000 | b;
-        t->rxd_link = t->txd;                 // loopback
+        t->rxd_link = getenv("NT_NOLOOP") ? 1 : t->txd;   // loopback
         t->rxd_cart = 1;
         if (k % 2 == 0) t->clk_74a = !t->clk_74a;
         if (k % 3 == 0) t->clk_sys = !t->clk_sys;

@@ -52,7 +52,7 @@ FujiNet Pocket cartridge, `fujinet-hardware-analogue-pocket`).
 
 | Setting | Values |
 |---|---|
-| Port | Auto (the line that last started a byte), Link port, Cartridge |
+| Port | Auto (the line that last started a byte), Link port, Cartridge; Loopback test (TX straight back to RX inside the core: no wires) |
 | Speed | 300 to 921,600 baud (115,200 by default) |
 | Local Echo | Off / On: what you type shows as typed (Enter starts a new line, Backspace erases) |
 | Enter Sends | CR / CR LF / LF |
@@ -80,7 +80,7 @@ Keys repeat after half a second.
 speed, echo); rows 26-30 hold the on-screen keyboard.
 
 **The line check** (0.1.2, the bottom row while the on-screen keyboard is
-closed): `T` bytes sent, `R` bytes received, `S` start bits seen, `F` bytes
+closed): `T` bytes handed to the port, `X` bytes the transmitter started, `R` bytes received, `S` start bits seen, `F` bytes
 dropped for a bad stop bit (a speed mismatch), all hex; then `L` and `C`, the
 levels of the link port's SI and the cartridge's pin 31 (1 = high, a line at
 rest). A loopback (SO joined to SI) should count T, R and S up together.
