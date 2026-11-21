@@ -10,11 +10,12 @@ buttons.
 *(From the simulation: the banner, keys typed on a Dock keyboard and echoed
 back through a serial loopback, and the on-screen keyboard open.)*
 
-**Status: 0.1.4, milestone 1** (docs/DESIGN.md). Works on a Pocket: the
-screen, the Dock keyboard, the on-screen keyboard, the menu, local echo, and
-the serial line on the link port, both ways, with a PC terminal (pySerial's
-miniterm) through a 3.3 V USB-serial adapter (2026-11-21). The cartridge
-slot's serial line is not yet tried.
+**Status: 0.2.0** (docs/DESIGN.md). Works on a Pocket: the screen, the Dock
+keyboard, the on-screen keyboard, the menu, local echo; the serial line on the
+link port, both ways, with a PC terminal (pySerial's miniterm) through a 3.3 V
+USB-serial adapter; and Mode FujiNet Modem through fujinet-pc on that line,
+dialling a Telnet BBS (2026-11-21). The cartridge slot's serial line is not
+yet tried.
 
 ## What it talks to
 
@@ -60,6 +61,9 @@ that come outside its FujiBus frames. Set Mode to FujiNet Modem, then type
   prints `CONNECT` after a moment, and the status line shows `MODEM:ON`.
   From then on keys go straight to the BBS.
 - `NO CARRIER` (the far end hangs up) returns to the command state.
+- If a dial is accepted (fujinet-pc's log shows it connecting) but nothing
+  comes back and the far end hangs up after a minute or two, try another
+  BBS: lists of Telnet BBSs carry many that no longer answer properly.
 - The modem needs WiFi set up in the FujiNet (its web page, or CONFIG).
 
 
