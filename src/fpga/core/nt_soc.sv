@@ -1,6 +1,6 @@
 // NetTerm: the system on chip (docs/DESIGN.md).
 //
-// clk_sys (49.5 MHz): a PicoRV32 (RV32IM) with 64 KiB of RAM holding the
+// clk_sys (49.5 MHz): a PicoRV32 (RV32IM) with 128 KiB of RAM holding the
 // firmware (firmware/, built to firmware.hex), the screen RAM's CPU port, the
 // MMIO block and the serial port. clk_pix (12.375 MHz): the text video.
 // clk_74a: the APF's controller words and the menu's settings, which reach
@@ -8,12 +8,15 @@
 // still until the sys side has taken it).
 //
 // Memory map (firmware/hw.h):
-//   0x0000_0000  RAM, 64 KiB (code, data, stack; reset vector 0)
+//   0x0000_0000  RAM, 128 KiB (code, data, stack; reset vector 0)
 //   0x1000_0000  screen RAM: cell n = row * 80 + col at 0x1000_0000 + 4n,
 //                bits [7:0] the CP437 character, [11:8] foreground, [15:12]
 //                background (CGA colours); 80 x 30 cells
 //   0x2000_0000  MMIO (below)
 //   0x3000_0000  the save RAM, 2 KiB: the Pocket's save slot (nt_save_ram.sv)
+//   0x4000_0000  the list window, 4 KiB: where the Pocket puts what the
+//                firmware reads from the BBS list file (data slot 0x101,
+//                deferloaded; target command 0x0180, MMIO 0x68-0x74)
 
 `default_nettype none
 
@@ -38,6 +41,19 @@ module nt_soc #(
     input  wire        save_wr,
     input  wire        save_rd,
     output wire [31:0] save_dout,
+
+    // the BBS list file (clk_74a): its window's bridge port, the target
+    // command's request to core_bridge_cmd, and the file's size from the
+    // data table
+    input  wire  [9:0] lwin_addr,
+    input  wire [31:0] lwin_din,
+    input  wire        lwin_wr,
+    output logic       tgt_read,
+    output logic [31:0] tgt_offset,
+    output logic [31:0] tgt_length,
+    input  wire        tgt_done,
+    input  wire  [2:0] tgt_err,
+    input  wire [31:0] list_size,
 
     // the serial port: TX goes out on both ports; RX from the one chosen
     output wire        txd,
@@ -112,7 +128,7 @@ module nt_soc #(
         .CATCH_MISALIGN      (1),
         .CATCH_ILLINSN       (1),
         .PROGADDR_RESET      (32'h0000_0000),
-        .STACKADDR           (32'h0001_0000)
+        .STACKADDR           (32'h0002_0000)
     ) cpu (
         .clk        (clk_sys),
         .resetn     (~reset),
@@ -136,13 +152,14 @@ module nt_soc #(
     wire sel_scr = mem_addr[31:28] == 4'h1;
     wire sel_io  = mem_addr[31:28] == 4'h2;
     wire sel_sav = mem_addr[31:28] == 4'h3;
+    wire sel_win = mem_addr[31:28] == 4'h4;
     wire go      = mem_valid && !mem_ready;
 
-    // RAM: 16 K words, byte writes (packed bytes: Quartus' byte-enable form)
-    logic [3:0][7:0] ram [0:16383];
+    // RAM: 32 K words, byte writes (packed bytes: Quartus' byte-enable form)
+    logic [3:0][7:0] ram [0:32767];
     initial $readmemh(FIRMWARE, ram);
     logic [31:0] ram_q;
-    wire  [13:0] ram_a = mem_addr[15:2];
+    wire  [14:0] ram_a = mem_addr[16:2];
     always_ff @(posedge clk_sys) begin
         if (go && sel_ram) begin
             if (mem_wstrb[0]) ram[ram_a][0] <= mem_wdata[7:0];
@@ -176,6 +193,71 @@ module nt_soc #(
         .rd_b   (save_rd),
         .dout_b (save_dout)
     );
+
+    // The list window: the bridge writes the file's bytes here; the CPU reads
+    // them (and clears the window before a read, so bytes past the end of
+    // the file read 0)
+    wire  [31:0] win_q;
+    nt_save_ram #(.WORD_BITS(10)) list_win (
+        .clk_a  (clk_sys),
+        .addr_a (mem_addr[11:2]),
+        .din_a  (mem_wdata),
+        .we_a   (go && sel_win ? mem_wstrb : 4'd0),
+        .dout_a (win_q),
+        .clk_b  (clk_74a),
+        .addr_b (lwin_addr),
+        .din_b  (lwin_din),
+        .we_b   (lwin_wr),
+        .rd_b   (1'b0),
+        .dout_b ()
+    );
+
+    // The list read: the CPU sets the offset and length and writes GO; the
+    // request crosses to clk_74a, which raises tgt_read (core_bridge_cmd
+    // takes its rising edge), waits for the command's done (cleared when it
+    // starts, set with the result when the Pocket has written the window),
+    // and acknowledges. 3.6 s without done gives result 7.
+    logic [31:0] l_off = '0, l_len = '0;    // clk_sys, still while busy
+    logic        l_req = 1'b0;
+    logic        l_ack = 1'b0;              // clk_74a
+    logic [2:0]  l_err = '0;                // clk_74a, still once acknowledged
+    logic [2:0]  l_req_s = '0;
+    logic [1:0]  l_st = '0;
+    logic [27:0] l_tmo = '0;
+    always_ff @(posedge clk_74a) begin
+        l_req_s <= {l_req_s[1:0], l_req};
+        l_tmo <= l_tmo + 28'd1;
+        unique case (l_st)
+            2'd0: if (l_req_s[2] != l_ack) begin
+                tgt_offset <= l_off;
+                tgt_length <= l_len;
+                tgt_read   <= 1'b1;
+                l_tmo      <= '0;
+                l_st       <= 2'd1;
+            end
+            2'd1: if (!tgt_done) l_st <= 2'd2;          // started (done cleared)
+            default: if (tgt_done) begin
+                l_err    <= tgt_err;
+                tgt_read <= 1'b0;
+                l_ack    <= ~l_ack;
+                l_st     <= 2'd0;
+            end
+        endcase
+        if (l_st != 2'd0 && &l_tmo) begin
+            l_err    <= 3'd7;
+            tgt_read <= 1'b0;
+            l_ack    <= ~l_ack;
+            l_st     <= 2'd0;
+        end
+    end
+    logic [2:0] l_ack_s = '0;
+    logic [31:0] lsize_s1 = '0, lsize_s2 = '0;
+    always_ff @(posedge clk_sys) begin
+        l_ack_s  <= {l_ack_s[1:0], l_ack};
+        lsize_s1 <= list_size;              // quasi-static: set once, when the Pocket opens the file
+        lsize_s2 <= lsize_s1;
+    end
+    wire l_busy = l_req != l_ack_s[2];
 
     wire  [11:0] scr_ab;
     logic [15:0] scr_qb;
@@ -282,6 +364,8 @@ module nt_soc #(
             6'h15: io_q = set_sys[63:32];
             6'h18: io_q = {15'd0, cur_on, 3'd0, cur_y, 1'b0, cur_x};
             6'h19: io_q = {16'd0, u_tsent};
+            6'h1C: io_q = {28'd0, l_err, l_busy};
+            6'h1D: io_q = lsize_s2;
             default: io_q = 32'd0;
         endcase
     end
@@ -298,6 +382,9 @@ module nt_soc #(
                     6'h05: begin u_wdata <= mem_wdata[7:0]; u_push <= 1'b1; end
                     6'h06: begin u_div <= mem_wdata[19:0]; u_mode <= mem_wdata[22:21]; end
                     6'h18: begin cur_x <= mem_wdata[6:0]; cur_y <= mem_wdata[12:8]; cur_on <= mem_wdata[16]; end
+                    6'h1A: l_off <= mem_wdata;
+                    6'h1B: l_len <= mem_wdata;
+                    6'h1C: if (!l_busy) l_req <= ~l_req;
                     default: ;
                 endcase
             end
@@ -314,17 +401,18 @@ module nt_soc #(
     end
 
     // read data: one clock after the request, with mem_ready
-    logic [1:0]  rsel = '0;
+    logic [2:0]  rsel = '0;
     logic [31:0] io_qr = '0;
     always_ff @(posedge clk_sys) begin
-        rsel  <= sel_scr ? 2'd1 : sel_io ? 2'd2 : sel_sav ? 2'd3 : 2'd0;
+        rsel  <= sel_scr ? 3'd1 : sel_io ? 3'd2 : sel_sav ? 3'd3 : sel_win ? 3'd4 : 3'd0;
         io_qr <= io_q;
     end
     always_comb begin
         unique case (rsel)
-            2'd1:    mem_rdata = {16'd0, scr_qa};
-            2'd2:    mem_rdata = io_qr;
-            2'd3:    mem_rdata = sav_q;
+            3'd1:    mem_rdata = {16'd0, scr_qa};
+            3'd2:    mem_rdata = io_qr;
+            3'd3:    mem_rdata = sav_q;
+            3'd4:    mem_rdata = win_q;
             default: mem_rdata = ram_q;
         endcase
     end

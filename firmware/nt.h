@@ -3,12 +3,21 @@
 #define NT_H
 #include <stdint.h>
 
-#define VERSION     "0.4.0"
+#define VERSION     "0.5.0"
 #define COLS        80
 #define TROWS       24              /* the terminal: rows 0-23 (VT100's 80 x 24) */
 #define STATUS_ROW  24
 #define OSK_ROW     25              /* the on-screen keyboard: rows 25-29 */
 #define OSK_ROWS    5
+
+/* key codes past ASCII (keys.c makes them; book.c and list.c take them) */
+enum {
+    K_UP = 0x100, K_DOWN, K_LEFT, K_RIGHT, K_HOME, K_END, K_PGUP, K_PGDN, K_INS, K_DEL,
+    K_F1, K_F2, K_F3, K_F4, K_F5, K_F6, K_F7, K_F8, K_F9, K_F10, K_F11, K_F12,
+    K_ENTER, K_BKSP, K_SHIFT, K_CTRL, K_HIDE,
+    K_SB_UP, K_SB_DOWN, K_SB_PGUP, K_SB_PGDN, K_SB_TOP, K_SB_END,     /* scrollback */
+    K_BOOK,                                                         /* the address book */
+};
 
 /* attribute byte: [3:0] foreground, [7:4] background (CGA colours) */
 #define ATTR(fg, bg) ((uint8_t)(((bg) << 4) | (fg)))
@@ -54,7 +63,15 @@ int book_is_open(void);
 void book_open(void);
 void book_close(void);
 void book_toggle(void);
-void book_key(int k, int k_up, int k_down, int k_enter, int k_bksp, int k_del);
+void book_key(int k);
+int book_add(const char *name, const char *addr);   /* 1 added, 0 already there, -1 full */
+
+/* list.c: the BBS list (data.json "BBS List": a SyncTERM dialing directory,
+   syncterm.lst, as the Telnet BBS Guide's monthly download has it), browsed
+   from the address book */
+void list_open(void);               /* draws it over the book */
+int list_is_open(void);
+void list_key(int k);               /* clears list_is_open when it goes back */
 
 /* main.c: dial an address (ATDT, one burst) */
 void modem_dial(const char *addr);

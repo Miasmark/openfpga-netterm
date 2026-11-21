@@ -48,6 +48,8 @@ FujiNet Pocket cartridge, `fujinet-hardware-analogue-pocket`).
    <https://github.com/Miasmark/openfpga-netterm/releases/tag/dev>.
 2. Unzip it and copy `Cores` and `Platforms` to the root of the SD card.
 3. Run **NetTerm** from the openFPGA cores list. Nothing has to be loaded.
+4. Optional, for the BBS list (below): copy `syncterm.lst` to the SD card's
+   `Assets/netterm/common/`.
 
 ## Using it
 
@@ -88,6 +90,23 @@ Down or Tab between them, Enter on the address saves, an empty address
 removes the entry, Esc cancels. Up to 30 entries, kept in the core's save
 file (`Saves/netterm/common/addressbook.sav`), which the Pocket writes when
 the core is quit.
+
+**BBS list** (0.5): the Telnet BBS Guide's monthly list, browsed and dialled
+from the address book.
+- Download the list at <https://www.telnetbbsguide.com/lists/download-list/>
+  (`ibbsMMYY.zip`) and copy the `syncterm.lst` from it to the SD card's
+  `Assets/netterm/common/`. Any SyncTERM dialing directory works the same way.
+  Each month, copy the new one over it.
+- In the address book, Right opens the list. NetTerm reads the file the first
+  time (a second or two) and keeps the Telnet entries (about 1,070 in the
+  November 2026 list; the SSH ones can't be reached through the modem and are
+  left out).
+- Up / Down; Left / Right or Page Up / Page Down a page; Home / End; a letter
+  or digit on the keyboard jumps to the next name starting with it.
+- Enter (A) dials. Space (Y) copies the entry into the address book (the name
+  cut to 23 characters). Esc (X) or Backspace (B) goes back to the book.
+- The core's menu has **BBS List** to pick another `.lst` file; the list is
+  read again the next time it is opened.
 
 **Scrollback** (0.3): the last 200 lines that scrolled off the top. Shift +
 Page Up / Page Down a page, Shift + Up / Down a line, Shift + Home the oldest,
@@ -140,6 +159,8 @@ GitHub Actions builds every push:
 
 **Simulation:** `sim/run.sh` (Verilator 5, clang / lld, Python's PIL) runs the
 whole core, CPU and firmware included, and writes `sim/work/frame.png`.
+`NT_LIST=path/syncterm.lst sim/run.sh 1.7` also models the Pocket's side of
+the BBS list's reads (target command 0x0180) and opens the list.
 
 ## Files
 
@@ -148,8 +169,9 @@ whole core, CPU and firmware included, and writes `sim/work/frame.png`.
 | `docs/DESIGN.md` | How it works, and the milestones. |
 | `src/fpga/core/nt_soc.sv` | The system: CPU, RAM, screen RAM, MMIO, the controllers' crossing. |
 | `src/fpga/core/nt_uart.sv`, `nt_video.sv` | The serial port; the text video. |
+| `src/fpga/core/nt_save_ram.sv` | The save slot's RAM (the address book), also the BBS list's 4 KiB window. |
 | `src/fpga/core/core_top.v` | The APF top level: pins, PLL, settings, reset. |
-| `firmware/` | The C firmware: `term.c` the terminal, `keys.c` the keyboards, `main.c` the loop. |
+| `firmware/` | The C firmware: `term.c` the terminal, `keys.c` the keyboards, `main.c` the loop, `scrollback.c`, `book.c` the address book, `list.c` the BBS list. |
 | `tools/gen_font.py` | The code page 437 font, from font8x8. |
 | `tools/gen_platform_image.py` | The platform image (a video terminal, `dist/Platforms/_images/netterm.bin`; preview `docs/platform-image.png`). |
 | `dist/` | The core's JSON files and platform. |

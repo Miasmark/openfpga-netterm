@@ -12,7 +12,8 @@
  * Start (or Alt+D on the Dock keyboard) opens it over the terminal's rows.
  * In the list: Up / Down choose, Enter (A) dials (sends ATDT address as one
  * burst, as Mode FujiNet Modem does), Space (Y) edits, Tab (L) adds, Delete
- * removes, Esc (X) or Backspace (B) closes. Editing: type; Up / Down or Tab
+ * removes, Right opens the BBS list (list.c), Esc (X) or Backspace (B)
+ * closes. Editing: type; Up / Down or Tab
  * move between the name and the address; Enter on the address saves (an empty
  * address removes the entry); Esc cancels.
  */
@@ -26,7 +27,8 @@
 
 static const char MAGIC[8] = "NTBOOK1";
 
-static int open_, editing, sel, field, edit_slot;
+static int open_, editing, sel, top, field, edit_slot;
+#define SHOWN       17              /* entries on the screen at once */
 static char e_name[NAME_LEN], e_addr[ADDR_LEN];
 extern uint16_t sb_live[TROWS][COLS];       /* the terminal's rows, while the book is up (scrollback.c's) */
 #define under sb_live
@@ -105,19 +107,28 @@ static void draw(void)
     }
     int n = count();
     if (!n)
-        text(3, 4, "No entries yet: Tab (L) adds one.", bg);
-    for (int k = 0; k < n && k < 17; k++) {
+        text(3, 4, "No entries yet: Tab (L) adds one, or Right: the BBS list.", bg);
+    if (sel < top) top = sel;
+    if (sel >= top + SHOWN) top = sel - SHOWN + 1;
+    if (n) {
+        char b[16];
+        int m = 0;
+        b[m++] = '0' + (sel + 1) / 10 % 10; b[m++] = '0' + (sel + 1) % 10;
+        b[m++] = '/'; b[m++] = '0' + n / 10 % 10; b[m++] = '0' + n % 10; b[m] = 0;
+        text(0, COLS - 8, b, title);
+    }
+    for (int k = top; k < n && k < top + SHOWN; k++) {
         int i = nth(k);
         char nm[NAME_LEN], ad[ADDR_LEN];
         sget(ENTRY(i), nm, NAME_LEN);
         sget(ENTRY(i) + NAME_LEN, ad, ADDR_LEN);
         uint8_t a = k == sel ? hi : bg;
-        fill_row(2 + k, 2, COLS - 2, ' ', a);
-        text(2 + k, 4, nm, a);
-        text(2 + k, 30, ad, a);
+        fill_row(2 + k - top, 2, COLS - 2, ' ', a);
+        text(2 + k - top, 4, nm, a);
+        text(2 + k - top, 30, ad, a);
     }
     text(20, 2, "Enter (A): dial   Space (Y): edit   Tab (L): add   Delete: remove", dim);
-    text(21, 2, "Esc (X) or Backspace (B): close.  Start or Alt+D opens and closes the book.", dim);
+    text(21, 2, "Right: the BBS list.  Esc (X) or Backspace (B): close.  Start or Alt+D: close.", dim);
     text(22, 2, "Kept in the save slot: written to the SD card when the core is quit.", dim);
 }
 
@@ -143,6 +154,7 @@ void book_close(void)
 {
     if (!open_) return;
     open_ = 0;
+    while (list_is_open()) list_key(27);
     for (int r = 0; r < TROWS; r++)
         for (int c = 0; c < COLS; c++)
             cell_set_raw(r, c, under[r][c]);
@@ -185,8 +197,39 @@ static void save_edit(void)
     if (sel >= n) sel = n ? n - 1 : 0;
 }
 
-void book_key(int k, int k_up, int k_down, int k_enter, int k_bksp, int k_del)
+/* An entry from the BBS list: 1 added, 0 already there (the same address),
+   -1 no room */
+int book_add(const char *name, const char *addr)
 {
+    init_if_blank();
+    char ad[ADDR_LEN];
+    int slot = -1;
+    for (int i = 0; i < BOOK_MAX; i++) {
+        if (!used(i)) { if (slot < 0) slot = i; continue; }
+        sget(ENTRY(i) + NAME_LEN, ad, ADDR_LEN);
+        int j = 0;
+        while (ad[j] && ad[j] == addr[j]) j++;
+        if (ad[j] == addr[j]) return 0;
+    }
+    if (slot < 0) return -1;
+    sput(ENTRY(slot), name, NAME_LEN);
+    sput(ENTRY(slot) + NAME_LEN, addr, ADDR_LEN);
+    return 1;
+}
+
+void book_key(int k)
+{
+    if (list_is_open()) {
+        list_key(k);
+        if (!open_) return;             /* dialled: the book closed too */
+        if (!list_is_open()) {          /* back to the book */
+            int n = count();
+            if (sel >= n) sel = n ? n - 1 : 0;
+            draw();
+        }
+        return;
+    }
+    const int k_up = K_UP, k_down = K_DOWN, k_enter = K_ENTER, k_bksp = K_BKSP, k_del = K_DEL;
     if (editing) {
         char *v = field ? e_addr : e_name;
         int max = field ? ADDR_LEN - 1 : NAME_LEN - 1, n = 0;
@@ -203,6 +246,9 @@ void book_key(int k, int k_up, int k_down, int k_enter, int k_bksp, int k_del)
     if (k == 27 || k == k_bksp) { book_close(); return; }
     if (k == k_up && sel > 0) sel--;
     else if (k == k_down && sel + 1 < n) sel++;
+    else if (k == K_PGUP) sel = sel > SHOWN ? sel - SHOWN : 0;
+    else if (k == K_PGDN) { sel += SHOWN; if (sel >= n) sel = n ? n - 1 : 0; }
+    else if (k == K_RIGHT) { list_open(); return; }
     else if (k == ' ' && n) start_edit(nth(sel));
     else if (k == '\t') { if (n < BOOK_MAX) start_edit(-1); }
     else if (k == k_del && n) {

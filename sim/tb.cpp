@@ -29,14 +29,23 @@ int main(int argc, char **argv) {
     // the keyboard: "hello" then Enter, 60 ms per key (NT_MODEM: "atdt bbs", Enter, "hi")
     const bool feed = getenv("NT_FEED") != nullptr;
     const bool book = getenv("NT_BOOK") != nullptr;     // Start: the address book, then A: dial    // NT_FEED=n: n numbered lines arrive, then R + Left, R + Up x2
-    const bool modem = getenv("NT_MODEM") != nullptr || feed || book;
+    // NT_LIST=file: the BBS list slot holds that file. Start (the book), Right (the list),
+    // then Down x3, Y (copy), and with NT_LIST_DIAL, A (dial) at NT_LIST_T ms (default 1500)
+    const char *lpath = getenv("NT_LIST");
+    std::vector<uint8_t> lfile;
+    if (lpath) { FILE *lf = fopen(lpath, "rb"); int c; while (lf && (c = fgetc(lf)) != EOF) lfile.push_back(c); if (lf) fclose(lf); }
+    const double lt = getenv("NT_LIST_T") ? atof(getenv("NT_LIST_T")) : 1500;
+    t->list_size = lfile.size();
+    t->tgt_done = 0; t->tgt_err = 0; t->lwin_wr = 0;
+    int tg_st = 0, tg_i = 0, tg_wait = 0, tg_reads = 0; uint8_t tg_prev = 0; uint32_t tg_off = 0, tg_len = 0;
+    const bool modem = getenv("NT_MODEM") != nullptr || feed || book || lpath;
     static const uint8_t typed_hello[] = {0x0B, 0x08, 0x0F, 0x0F, 0x12, 0x28, 0x1B, 0x1C, 0x1D};
     static const uint8_t typed_modem[] = {0x04, 0x17, 0x07, 0x17, 0x2C, 0x05, 0x05, 0x16, 0x28, 0x0B, 0x0C};
     // NT_BOOK_EDIT: in the book, Tab (add), "abc", Enter, "xy", Enter (save)
     static const uint8_t typed_edit[] = {0, 0, 0, 0x2B, 0x04, 0x05, 0x06, 0x28, 0x1B, 0x1C, 0x28};
     const bool bedit = getenv("NT_BOOK_EDIT") != nullptr;
     const uint8_t *typed = bedit ? typed_edit : modem ? typed_modem : typed_hello;
-    const int ntyped = bedit ? sizeof typed_edit : (feed || book) ? 0 : modem ? sizeof typed_modem : sizeof typed_hello;
+    const int ntyped = bedit ? sizeof typed_edit : (feed || book || lpath) ? 0 : modem ? sizeof typed_modem : sizeof typed_hello;
     // the fake FujiNet modem: one command per burst (a 100 ms gap ends it), silent in the
     // command state; ATDT -> "CONNECT 115200" and a greeting, then it echoes like a BBS
     const int BIT = 430 * 6;               // ticks per bit at 115,200
@@ -62,7 +71,16 @@ int main(int argc, char **argv) {
         t->cont3_trig = 0;
         // controller 1: Select at 450 ms, Right at 480 and 510, A at 540
         uint32_t b = 0;
-        if (book) {
+        if (lpath) {
+            if (ms > 200 && ms < 210) b |= 1u << 15;                      // Start
+            if (ms > 300 && ms < 310) b |= 1u << 3;                       // Right: the list
+            const int downs = getenv("NT_LIST_DOWNS") ? atoi(getenv("NT_LIST_DOWNS")) : 3;
+            for (int i = 0; i < downs && i < 3; i++) if (ms > lt + 40 * i && ms < lt + 40 * i + 10) b |= 1u << 1;   // Down
+            if (downs > 3 && ms > lt + 120 && ms < lt + 130) b |= 1u << 3;   // more: Right, a page
+            if (getenv("NT_LIST_BACK") && ms > lt + 250 && ms < lt + 260) b |= 1u << 5;   // B: back to the book
+            if (ms > lt + 150 && ms < lt + 160) b |= 1u << 7;             // Y: copy
+            if (getenv("NT_LIST_DIAL") && ms > lt + 250 && ms < lt + 260) b |= 1u << 4;   // A: dial
+        } else if (book) {
             if (ms > 200 && ms < 210) b |= 1u << 15;                      // Start
             if (getenv("NT_BOOK_DIAL") && ms > 300 && ms < 310) b |= 1u << 4;   // A
         } else if (feed) {
@@ -108,6 +126,22 @@ int main(int argc, char **argv) {
         } else
             t->rxd_link = getenv("NT_NOLOOP") ? 1 : t->txd;   // loopback
         t->rxd_cart = 1;
+        // the Pocket's side of target command 0x0180 (core_bridge_cmd and the APF), on clk_74a's rising edges
+        if (k % 4 == 0 && !t->clk_74a) {
+            t->lwin_wr = 0;
+            if (t->tgt_read && !tg_prev && tg_st == 0) { tg_st = 1; tg_wait = 200; tg_off = t->tgt_offset; tg_len = t->tgt_length; tg_reads++; }
+            tg_prev = t->tgt_read;
+            if (tg_st == 1 && --tg_wait == 0) { t->tgt_done = 0; tg_st = 2; tg_i = 0; tg_wait = 2000; }
+            else if (tg_st == 2 && --tg_wait <= 0) {
+                if (tg_off >= lfile.size() || lfile.empty()) { t->tgt_err = 2; t->tgt_done = 1; tg_st = 0; }
+                else if (tg_i < (int)tg_len && tg_off + tg_i < lfile.size()) {
+                    uint32_t w = 0;
+                    for (int j = 0; j < 4; j++) w |= (uint32_t)(tg_off + tg_i + j < lfile.size() ? lfile[tg_off + tg_i + j] : 0) << (24 - 8 * j);
+                    t->lwin_addr = (tg_i >> 2) & 1023; t->lwin_din = w; t->lwin_wr = 1;
+                    tg_i += 4; tg_wait = 2;
+                } else { t->tgt_err = 0; t->tgt_done = 1; tg_st = 0; }
+            }
+        }
         if (k % 2 == 0) t->clk_74a = !t->clk_74a;
         if (k % 3 == 0) t->clk_sys = !t->clk_sys;
         bool pix_rise = false;
@@ -130,6 +164,7 @@ int main(int argc, char **argv) {
     fprintf(f, "P6\n%d %d\n255\n", W, H);
     for (uint32_t p : last) { fputc(p >> 16, f); fputc(p >> 8 & 0xFF, f); fputc(p & 0xFF, f); }
     fclose(f);
+    if (lpath) printf("list reads %d\n", tg_reads);
     printf("%d frames%s\n", frames, modem ? (std::string(", modem commands ") + std::to_string(commands)).c_str() : "");
     delete t;
     return 0;

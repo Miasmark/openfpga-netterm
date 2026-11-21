@@ -7,6 +7,8 @@
 #define SCR         ((volatile uint32_t *)0x10000000u)   /* cell n = row * 80 + col */
 #define SAVE        ((volatile uint8_t *)0x30000000u)    /* the save slot, 2 KiB (data.json: Address Book) */
 #define SAVE_SIZE   2048
+#define LWIN        ((volatile uint8_t *)0x40000000u)    /* the BBS list's window, 4 KiB (data.json: BBS List) */
+#define LWIN_SIZE   4096
 
 #define IO_ID       REG(0x00)       /* "NT01" */
 #define IO_FRAMES   REG(0x04)       /* video frames, 60.2 per second */
@@ -25,6 +27,10 @@
 #define IO_SET_HI   REG(0x54)       /* settings 4-7 */
 #define IO_CURSOR   REG(0x60)       /* [6:0] column, [12:8] row, [16] shown */
 #define IO_UTXN     REG(0x64)       /* [15:0] bytes the transmitter has started */
+#define IO_LOFF     REG(0x68)       /* the BBS list read: the file offset */
+#define IO_LLEN     REG(0x6C)       /* bytes (at most LWIN_SIZE) */
+#define IO_LCTL     REG(0x70)       /* write: start the read into LWIN; read: [0] busy, [3:1] the Pocket's result (0 = OK, 7 = no answer) */
+#define IO_LSIZE    REG(0x74)       /* the file's size from the data table (0 = no file, or not known)  */
 
 #define CLK_HZ      49500000u
 

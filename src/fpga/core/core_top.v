@@ -348,6 +348,8 @@ synch_3 s01(pll_core_locked, pll_core_locked_s, clk_74a);
 //                    firmware (firmware/hw.h, SET_*)
 //   0x10000200       Reset: restarts the firmware
 //   0x20000000       the save slot, 2 KiB (data.json "Address Book"; nt_save_ram.sv)
+//   0x40000000       the BBS list's window, 4 KiB: the Pocket writes what a
+//                    target read (0x0180) of data slot 0x101 asks for here
 //   0xF8000000       APF command interface
 
     reg     [63:0]  settings = 64'h0000_0000_0007_0000;   // defaults: interact.json's
@@ -364,6 +366,7 @@ end
 
     wire    [31:0]  save_rd_latched;
     wire            save_sel = bridge_addr[31:24] == 8'h20;
+    wire            lwin_sel = bridge_addr[31:24] == 8'h40;
 
 always @(*) begin
     casex(bridge_addr)
@@ -436,7 +439,7 @@ end
 // bridge target commands
 // synchronous to clk_74a
 
-    reg             target_dataslot_read = 1'b0;
+    wire            target_dataslot_read;      // the BBS list reads (nt_soc)
     reg             target_dataslot_write = 1'b0;
     reg             target_dataslot_getfile = 1'b0;
     reg             target_dataslot_openfile = 1'b0;
@@ -445,10 +448,10 @@ end
     wire            target_dataslot_done;
     wire    [2:0]   target_dataslot_err;
 
-    reg     [15:0]  target_dataslot_id = 16'd0;
-    reg     [31:0]  target_dataslot_slotoffset = 32'd0;
-    reg     [31:0]  target_dataslot_bridgeaddr = 32'd0;
-    reg     [31:0]  target_dataslot_length = 32'd0;
+    wire    [15:0]  target_dataslot_id = 16'h0101;         // data.json "BBS List"
+    wire    [31:0]  target_dataslot_slotoffset;
+    wire    [31:0]  target_dataslot_bridgeaddr = 32'h40000000;
+    wire    [31:0]  target_dataslot_length;
 
     wire    [31:0]  target_buffer_param_struct;
     wire    [31:0]  target_buffer_resp_struct;
@@ -456,12 +459,26 @@ end
 // bridge data slot access
 // synchronous to clk_74a
 
-// the save slot's size, so the Pocket writes the file even before one
-// exists: data slot index 0, its size field (as openFPGA-7800 does)
-    wire    [9:0]   datatable_addr = 10'd1;
-    wire            datatable_wren = 1'b1;
-    wire    [31:0]  datatable_data = 32'd2048;
+// The data table, in eight steps: write the save slot's size (data slot index
+// 0, so the Pocket writes the file even before one exists, as openFPGA-7800
+// does), then read the BBS list's size (index 1, which the Pocket fills in
+// when it opens the file); the table's RAM registers address and output, so
+// the word is read four clocks after the address is set
+    reg     [9:0]   datatable_addr = 10'd1;
+    reg             datatable_wren = 1'b0;
+    reg     [31:0]  datatable_data = 32'd2048;
     wire    [31:0]  datatable_q;
+    reg     [2:0]   dt_ph = 3'd0;
+    reg     [31:0]  list_size = 32'd0;
+always @(posedge clk_74a) begin
+    dt_ph <= dt_ph + 3'd1;
+    case (dt_ph)
+    3'd0: begin datatable_addr <= 10'd1; datatable_wren <= 1'b1; datatable_data <= 32'd2048; end
+    3'd1: begin datatable_addr <= 10'd3; datatable_wren <= 1'b0; end
+    3'd5: list_size <= datatable_q;
+    default: ;
+    endcase
+end
 
 core_bridge_cmd icb (
 
@@ -572,6 +589,15 @@ nt_soc soc (
     .save_wr    ( bridge_wr && save_sel ),
     .save_rd    ( bridge_rd && save_sel ),
     .save_dout  ( save_rd_latched ),
+    .lwin_addr  ( bridge_addr[11:2] ),
+    .lwin_din   ( bridge_wr_data ),
+    .lwin_wr    ( bridge_wr && lwin_sel ),
+    .tgt_read   ( target_dataslot_read ),
+    .tgt_offset ( target_dataslot_slotoffset ),
+    .tgt_length ( target_dataslot_length ),
+    .tgt_done   ( target_dataslot_done ),
+    .tgt_err    ( target_dataslot_err ),
+    .list_size  ( list_size ),
     .txd        ( nt_txd ),
     .rxd_link   ( port_tran_si ),
     .rxd_cart   ( cart_tran_pin31 ),

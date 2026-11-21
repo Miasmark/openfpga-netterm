@@ -1,8 +1,8 @@
-/* NetTerm firmware: everything in the 64 KiB RAM at 0 (nt_soc.sv); the stack
+/* NetTerm firmware: everything in the 128 KiB RAM at 0 (nt_soc.sv); the stack
    at its top, growing down. */
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
-MEMORY { RAM (rwx) : ORIGIN = 0, LENGTH = 64K }
+MEMORY { RAM (rwx) : ORIGIN = 0, LENGTH = 128K }
 SECTIONS {
     .text : { *(.text.start) *(.text .text.*) } > RAM
     .rodata : { *(.rodata .rodata.* .srodata .srodata.*) } > RAM
