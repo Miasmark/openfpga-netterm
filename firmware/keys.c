@@ -186,7 +186,7 @@ static void osk_draw(void)
         }
     }
     if (!osk_open)
-        text(OSK_ROW + 2, 2, "SELECT: on-screen keyboard   D-pad: arrows   A: Enter   B: Backspace   Y: Space", ATTR(8, 0));
+        text(OSK_ROW + 2, 2, "SELECT: keys  D-pad: arrows  A: Enter  B: Backspace  Y: Space  X: Esc", ATTR(8, 0));
 }
 
 static void osk_type(void)

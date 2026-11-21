@@ -79,6 +79,12 @@ Keys repeat after half a second.
 **The screen:** rows 1-24 are the terminal; row 25 is the status line (port,
 speed, echo); rows 26-30 hold the on-screen keyboard.
 
+**The line check** (0.1.2, the bottom row while the on-screen keyboard is
+closed): `T` bytes sent, `R` bytes received, `S` start bits seen, `F` bytes
+dropped for a bad stop bit (a speed mismatch), all hex; then `L` and `C`, the
+levels of the link port's SI and the cartridge's pin 31 (1 = high, a line at
+rest). A loopback (SO joined to SI) should count T, R and S up together.
+
 **The terminal:** VT100 / ANSI-BBS: cursor moves, erases, insert / delete,
 scroll regions, 16 colours (SGR), saved cursor, and the replies to "where is
 the cursor" (ESC [6n) and "what are you" (ESC [c) that BBSs ask. Characters

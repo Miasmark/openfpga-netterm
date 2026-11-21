@@ -1,4 +1,4 @@
-NetTerm 0.1.1
+NetTerm 0.1.2
 
 A serial terminal (ANSI / VT100) for the Analogue Pocket: 80 x 24 with a
 status line, on the link port or the cartridge slot, 300 to 921,600 baud,

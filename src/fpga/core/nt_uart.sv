@@ -22,7 +22,9 @@ module nt_uart (
     output wire        avail,
     output wire [10:0] count,
     output logic       ovf,
-    input  wire        ovf_clr
+    input  wire        ovf_clr,
+    output logic [15:0] starts,             // start bits seen (diagnostics; wrap)
+    output logic [15:0] ferrs               // bytes dropped for a bad stop bit
 );
 
     // ---------------- TX ----------------
@@ -85,10 +87,13 @@ module nt_uart (
     logic        rwe = 1'b0;
     logic [7:0]  rwd = '0;
     initial ovf = 1'b0;
+    initial starts = '0;
+    initial ferrs = '0;
     always_ff @(posedge clk) begin
         rwe <= 1'b0;
         if (rbit == 4'd0) begin
             if (!rxd) begin                 // a start bit: sample at its middle
+                starts <= starts + 16'd1;
                 rbit <= 4'd1;
                 rcnt <= {1'b0, div[19:1]};
             end
@@ -106,7 +111,8 @@ module nt_uart (
                 if (rxd) begin              // framing errors are dropped
                     rwe <= 1'b1;
                     rwd <= rsh;
-                end
+                end else
+                    ferrs <= ferrs + 16'd1;
             end
         end
         if (rwe) begin

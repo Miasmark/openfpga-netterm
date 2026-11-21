@@ -15,6 +15,7 @@
 #define IO_UDATA    REG(0x14)       /* read: [7:0] the next RX byte, [8] it was there; write: send [7:0] */
 #define IO_UCTL     REG(0x18)       /* [19:0] clocks per bit, [22:21] RX port 0 auto / 1 link / 2 cartridge,
                                        [23] (read) the port in use: 0 link, 1 cartridge */
+#define IO_UDIAG    REG(0x1C)       /* [15:0] RX start bits seen, [31:16] RX bytes dropped for a bad stop bit */
 #define IO_KEY(n)   REG(0x20 + 4 * (n))     /* controllers 0-3: cont_key */
 #define IO_JOY(n)   REG(0x30 + 4 * (n))     /* cont_joy */
 #define IO_TRIG(n)  REG(0x40 + 4 * (n))     /* cont_trig */

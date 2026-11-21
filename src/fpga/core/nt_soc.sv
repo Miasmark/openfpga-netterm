@@ -190,6 +190,7 @@ module nt_soc #(
     wire  [7:0]  u_rdata;
     wire         u_avail, u_full, u_ovf;
     wire  [10:0] u_count;
+    wire  [15:0] u_starts, u_ferrs;
     logic        u_ovf_clr = 1'b0;
     logic [2:0]  rl_s = 3'b111, rc_s = 3'b111;
     // auto: the port whose line last fell (a start bit) while the other
@@ -218,7 +219,9 @@ module nt_soc #(
         .avail   (u_avail),
         .count   (u_count),
         .ovf     (u_ovf),
-        .ovf_clr (u_ovf_clr)
+        .ovf_clr (u_ovf_clr),
+        .starts  (u_starts),
+        .ferrs   (u_ferrs)
     );
 
     // the cursor (read by the video, quasi-static)
@@ -236,6 +239,7 @@ module nt_soc #(
             6'h04: io_q = {5'd0, u_count, 4'd0, rc_s[2], rl_s[2], 5'd0, u_ovf, u_full, u_avail};
             6'h05: io_q = {23'd0, u_avail, u_rdata};
             6'h06: io_q = {8'd0, u_port, u_mode, 1'b0, u_div};
+            6'h07: io_q = {u_ferrs, u_starts};
             6'h08: io_q = key[0];
             6'h09: io_q = key[1];
             6'h0A: io_q = key[2];

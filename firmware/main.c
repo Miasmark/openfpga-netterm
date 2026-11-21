@@ -13,6 +13,7 @@ static const uint32_t bauds[] = {300, 1200, 2400, 9600, 19200, 38400, 57600, 115
 
 static uint32_t cur_lo = 0xFFFFFFFF, cur_hi = 0xFFFFFFFF;
 static int echo;
+static uint32_t n_tx, n_rx;             /* bytes sent / received, for the status line */
 
 /* Local echo shows what was typed as a typewriter would, not the raw bytes:
    Enter (CR, CR LF or LF) as a new line, Backspace (DEL or BS) as erasing the
@@ -33,6 +34,7 @@ void host_send(const char *s, int n)
     for (int i = 0; i < n; i++) {
         while (IO_USTAT & 2) ;          /* TX full: wait (64 bytes drain in 5.6 ms at 115,200) */
         IO_UDATA = (uint8_t)s[i];
+        n_tx++;
         if (echo) echo_byte((uint8_t)s[i]);
     }
 }
@@ -69,6 +71,30 @@ void status_draw(void)
     text(STATUS_ROW, 55, osk_is_open() ? "SELECT: CLOSE KEYS" : "SELECT: KEYBOARD", a);
 }
 
+/* The line's diagnostics, on the status line's right end each frame:
+   T sent, R received, S start bits seen, F bad stop bits, then the levels of
+   the link port's SI and the cartridge's pin 31 (1 = high, idle). */
+static void hex4(char *b, uint32_t v)
+{
+    for (int i = 3; i >= 0; i--) { b[i] = "0123456789ABCDEF"[v & 15]; v >>= 4; }
+}
+
+static void diag_draw(void)
+{
+    char b[40];
+    uint32_t d = IO_UDIAG, st = IO_USTAT;
+    int n = 0;
+    b[n++] = 'T'; hex4(b + n, n_tx); n += 4; b[n++] = ' ';
+    b[n++] = 'R'; hex4(b + n, n_rx); n += 4; b[n++] = ' ';
+    b[n++] = 'S'; hex4(b + n, d); n += 4; b[n++] = ' ';
+    b[n++] = 'F'; hex4(b + n, d >> 16); n += 4; b[n++] = ' ';
+    b[n++] = 'L'; b[n++] = (st >> 8 & 1) ? '1' : '0';
+    b[n++] = 'C'; b[n++] = (st >> 9 & 1) ? '1' : '0';
+    b[n] = 0;
+    if (!osk_is_open())
+        text(OSK_ROW + 4, 2, b, ATTR(11, 0));
+}
+
 static void apply_settings(void)
 {
     int bi = setting(SET_BAUD), port = setting(SET_PORT);
@@ -94,6 +120,7 @@ int main(void)
         /* the serial port: up to a screenful a pass, so input stays live */
         for (int n = 0; n < 256 && (IO_USTAT & 1); n++) {
             uint32_t d = IO_UDATA;
+            n_rx++;
             term_putc((uint8_t)d);
         }
         keys_poll();
@@ -110,6 +137,7 @@ int main(void)
                 last_inuse = inuse;
                 status_draw();
             }
+            diag_draw();
         }
     }
 }
