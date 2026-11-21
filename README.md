@@ -80,6 +80,14 @@ that come outside its FujiBus frames. Set Mode to FujiNet Modem, then type
 | Backspace Sends | DEL (127) / BS (8) |
 | Reset | restarts the terminal |
 
+**Scrollback** (0.3): the last 200 lines that scrolled off the top. Shift +
+Page Up / Page Down a page, Shift + Up / Down a line, Shift + Home the oldest,
+Shift + End back to the live screen; on the Pocket's buttons, hold R and use
+the D-pad (up / down a line, left / right a page). The status line shows how
+far back (`BACK 12 OF 200`). Any other key returns to the live screen and is
+sent; while looking back, what arrives waits in the 1 KiB serial buffer, and
+the view snaps back to live if that fills past 768 bytes.
+
 **A USB keyboard in the Dock:** a US layout; Shift, Ctrl; the arrows, Home,
 End, Page Up / Down, Insert, Delete and F1-F12 send VT100 / xterm sequences.
 Keys repeat after half a second.
@@ -94,7 +102,7 @@ Keys repeat after half a second.
 | Y | Space | Space |
 | X | Esc | Shift, once |
 | L | Tab | Ctrl, once |
-| R | | Shift lock |
+| R | held + D-pad: scrollback | Shift lock |
 | Select | open | close |
 
 **The screen:** rows 1-24 are the terminal; row 25 is the status line (port,

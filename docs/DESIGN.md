@@ -53,6 +53,7 @@ key / joy / trig words, the settings, the cursor.
 | `crt0.S`, `link.ld`, `lib.c` | Start-up, the memory layout, memset / memcpy (no C library). |
 | `term.c` | The terminal: a VT100 / ANSI-BBS subset in rows 0-23 (see its header for the sequences). |
 | `keys.c` | The Dock keyboard (HID codes to ASCII and VT sequences, repeat), controller 1, and the on-screen keyboard in rows 25-29. |
+| `scrollback.c` | The 200 lines scrolled off the top (32 KB of the RAM), and the view back through them. |
 | `main.c` | The loop: the UART into the terminal, the keys out; the menu's settings applied when they change; the status line (row 24). |
 
 **The Dock's keyboard** (controller 3, type 4): six HID usage codes, keys 1-4
@@ -78,7 +79,7 @@ count of X.
    at 115,200, as openFPGA-7800's `fujinet_mailbox.sv` does in hardware) to a
    FujiNet's network device: open `N:TELNET://host:port/` or `N:TCP://...`,
    then pass bytes both ways. A dialling directory, kept in a save file.
-4. **Comfort:** scrollback; XMODEM / YMODEM to and from the save area; an
+4. **Comfort:** scrollback (0.3.0); XMODEM / YMODEM to and from the save area; an
    8 x 16 font at 640 x 480 for the Dock; the mouse (pointing at the
    on-screen keyboard, selecting text); a VT220 keypad mode.
 5. **Later, if FujiNet's firmware allows:** SSH (`N:SSH://`), a faster link

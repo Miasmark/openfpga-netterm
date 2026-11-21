@@ -147,7 +147,16 @@ void status_draw(void)
     text(STATUS_ROW, 38, b, a);
     text(STATUS_ROW, 45, "8N1", a);
     text(STATUS_ROW, 50, echo ? "ECHO" : "", a);
-    text(STATUS_ROW, 57, osk_is_open() ? "SELECT: CLOSE KEYS" : "SELECT: KEYBOARD", a);
+    if (sb_active()) {
+        char n[12];
+        utoa10(sb_offset(), n);
+        text(STATUS_ROW, 57, "BACK", ATTR(14, 1));
+        text(STATUS_ROW, 62, n, ATTR(14, 1));
+        text(STATUS_ROW, 66, "OF", ATTR(14, 1));
+        utoa10(sb_count(), n);
+        text(STATUS_ROW, 69, n, ATTR(14, 1));
+    } else
+        text(STATUS_ROW, 57, osk_is_open() ? "SELECT: CLOSE KEYS" : "SELECT: KEYBOARD", a);
 }
 
 /* The line's diagnostics, on the status line's right end each frame:
@@ -202,7 +211,9 @@ int main(void)
     uint32_t last_frame = IO_FRAMES, last_inuse = 2;
     for (;;) {
         /* the serial port: up to a screenful a pass, so input stays live */
-        for (int n = 0; n < 256 && (IO_USTAT & 1); n++) {
+        /* looking back: the input waits in the FIFO, unless it is filling up */
+        if (sb_active() && ((IO_USTAT >> 16) & 0x7FF) > 768) sb_exit();
+        for (int n = 0; n < 256 && !sb_active() && (IO_USTAT & 1); n++) {
             uint32_t d = IO_UDATA;
             n_rx++;
             term_putc((uint8_t)d);

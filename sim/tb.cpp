@@ -27,17 +27,25 @@ int main(int argc, char **argv) {
     t->cont1_key = 0x10000000;                // a Pocket pad
     t->reset = 1;
     // the keyboard: "hello" then Enter, 60 ms per key (NT_MODEM: "atdt bbs", Enter, "hi")
-    const bool modem = getenv("NT_MODEM") != nullptr;
+    const bool feed = getenv("NT_FEED") != nullptr;    // NT_FEED=n: n numbered lines arrive, then R + Left, R + Up x2
+    const bool modem = getenv("NT_MODEM") != nullptr || feed;
     static const uint8_t typed_hello[] = {0x0B, 0x08, 0x0F, 0x0F, 0x12, 0x28, 0x1B, 0x1C, 0x1D};
     static const uint8_t typed_modem[] = {0x04, 0x17, 0x07, 0x17, 0x2C, 0x05, 0x05, 0x16, 0x28, 0x0B, 0x0C};
     const uint8_t *typed = modem ? typed_modem : typed_hello;
-    const int ntyped = modem ? sizeof typed_modem : sizeof typed_hello;
+    const int ntyped = feed ? 0 : modem ? sizeof typed_modem : sizeof typed_hello;
     // the fake FujiNet modem: one command per burst (a 100 ms gap ends it), silent in the
     // command state; ATDT -> "CONNECT 115200" and a greeting, then it echoes like a BBS
     const int BIT = 430 * 6;               // ticks per bit at 115,200
     int rx_state = -1, rx_bit = 0; uint64_t rx_t = 0; uint8_t rx_sh = 0, prev_txd = 1;
     std::string burst; uint64_t burst_t = 0; bool mon = false; int commands = 0;
     std::deque<uint8_t> out; int tx_bit = -1; uint64_t tx_t = 0; uint8_t tx_cur = 0, line = 1;
+    if (feed) {
+        mon = true;
+        for (int i = 1; i <= atoi(getenv("NT_FEED")); i++) {
+            char b[32]; snprintf(b, sizeof b, "line %02d of the feed\r\n", i);
+            for (char *p = b; *p; p++) out.push_back(*p);
+        }
+    }
     for (uint64_t k = 0; k < ticks; k++) {
         double ms = k / 297e3;
         if (ms > 0.01) t->reset = 0;
@@ -50,9 +58,15 @@ int main(int argc, char **argv) {
         t->cont3_trig = 0;
         // controller 1: Select at 450 ms, Right at 480 and 510, A at 540
         uint32_t b = 0;
+        if (feed) {
+            if (ms > 300 && ms < 600) b |= 1u << 9;                       // R held
+            if (ms > 320 && ms < 330) b |= 1u << 2;                       // Left: a page back
+            if ((ms > 400 && ms < 410) || (ms > 450 && ms < 460)) b |= 1u << 0;   // Up, Up
+        } else {
         if (ms > 450 && ms < 460) b = 1u << 14;
         if ((ms > 480 && ms < 490) || (ms > 510 && ms < 520)) b = 1u << 3;
         if (ms > 540 && ms < 550) b = 1u << 4;
+        }
         t->cont1_key = 0x10000000 | b;
         if (modem) {
             // receive from the core's TX
@@ -77,7 +91,7 @@ int main(int argc, char **argv) {
                 burst.clear();
             }
             // send to the core's RX
-            if (tx_bit < 0 && !out.empty()) { tx_cur = out.front(); out.pop_front(); tx_bit = 0; tx_t = k; line = 0; }
+            if (tx_bit < 0 && !out.empty() && ms > 50) { tx_cur = out.front(); out.pop_front(); tx_bit = 0; tx_t = k; line = 0; }   // after the core is up
             if (tx_bit >= 0 && k >= tx_t + BIT) {
                 tx_t += BIT; tx_bit++;
                 line = tx_bit <= 8 ? (tx_cur >> (tx_bit - 1)) & 1 : 1;

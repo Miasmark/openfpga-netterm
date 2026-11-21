@@ -6,9 +6,13 @@
  * key[15:8]. A code that wasn't there last time is a press; the newest held
  * key repeats (500 ms, then every 33 ms).
  *
+ * Shift + Up / Down / Page Up / Page Down / Home / End look back through the
+ * scrollback (a line, a page, the top, the live screen).
+ *
  * Controller 1 (the Pocket's own buttons, or a Dock controller):
  *   keyboard closed: D-pad = the arrow keys, A = Enter, B = Backspace,
- *     Y = Space, X = Esc, L = Tab, Select = open the on-screen keyboard
+ *     Y = Space, X = Esc, L = Tab, Select = open the on-screen keyboard,
+ *     R held + D-pad = the scrollback (up / down a line, left / right a page)
  *   keyboard open:   D-pad = move, A = type the key, B = Backspace,
  *     Y = Space, X = Shift (once), L = Ctrl (once), R = Shift lock,
  *     Select = close
@@ -23,10 +27,22 @@ enum {
     K_UP = 0x100, K_DOWN, K_LEFT, K_RIGHT, K_HOME, K_END, K_PGUP, K_PGDN, K_INS, K_DEL,
     K_F1, K_F2, K_F3, K_F4, K_F5, K_F6, K_F7, K_F8, K_F9, K_F10, K_F11, K_F12,
     K_ENTER, K_BKSP, K_SHIFT, K_CTRL, K_HIDE,
+    K_SB_UP, K_SB_DOWN, K_SB_PGUP, K_SB_PGDN, K_SB_TOP, K_SB_END,     /* scrollback */
 };
 
 static void key_out(int k)
 {
+    switch (k) {                        /* scrollback: looking back, nothing sent */
+    case K_SB_UP: sb_scroll(1); return;
+    case K_SB_DOWN: sb_scroll(-1); return;
+    case K_SB_PGUP: sb_scroll(TROWS - 1); return;
+    case K_SB_PGDN: sb_scroll(-(TROWS - 1)); return;
+    case K_SB_TOP: sb_top(); return;
+    case K_SB_END: if (sb_active()) sb_exit(); return;
+    default: break;
+    }
+    if (k == K_SHIFT || k == K_CTRL || k == K_HIDE) return;
+    if (sb_active()) sb_exit();         /* any other key: back to the live screen first */
     static const char *const seq[] = {
         "\033[A", "\033[B", "\033[D", "\033[C", "\033[H", "\033[F", "\033[5~", "\033[6~", "\033[2~", "\033[3~",
         "\033OP", "\033OQ", "\033OR", "\033OS", "\033[15~", "\033[17~", "\033[18~", "\033[19~", "\033[20~",
@@ -55,6 +71,17 @@ static const char hid_hi[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()\r\033\b\t _+{
 static int hid_key(uint8_t u, uint8_t mods)
 {
     int shift = (mods & 0x22) != 0, ctrl = (mods & 0x11) != 0;
+    if (shift) {                        /* Shift + the movement keys: the scrollback */
+        switch (u) {
+        case 0x52: return K_SB_UP;
+        case 0x51: return K_SB_DOWN;
+        case 0x4B: return K_SB_PGUP;
+        case 0x4E: return K_SB_PGDN;
+        case 0x4A: return K_SB_TOP;
+        case 0x4D: return K_SB_END;
+        default: break;
+        }
+    }
     if (u == 0x28 || u == 0x58) return K_ENTER;
     if (u == 0x2A) return K_BKSP;
     if (u >= 0x04 && u <= 0x38) {
@@ -230,8 +257,14 @@ static uint32_t pprev;
 static int prep;                    /* the button repeating, -1 none */
 static uint32_t prep_t;
 
+static uint32_t pheld;              /* the buttons down now */
+
 static void pad_press(int b)
 {
+    if (!osk_open && (pheld & (1u << B_R)) && b <= B_RIGHT) {   /* R + D-pad: the scrollback */
+        key_out(b == B_UP ? K_SB_UP : b == B_DOWN ? K_SB_DOWN : b == B_LEFT ? K_SB_PGUP : K_SB_PGDN);
+        return;
+    }
     if (osk_open) {
         switch (b) {
         case B_UP: osk_move(-1, 0); break;
@@ -271,6 +304,7 @@ static void pad_poll(uint32_t now)
     uint32_t k = IO_KEY(0);
     uint32_t b = ((k >> 28) == 0 || (k >> 28) >= 4) ? 0 : (k & 0xFFFF);
     uint32_t down = b & ~pprev;
+    pheld = b;
     for (int i = 0; i < 16; i++)
         if (down & (1u << i)) {
             pad_press(i);

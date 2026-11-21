@@ -30,9 +30,12 @@ static uint8_t attr(void)
     return ATTR(f, b);
 }
 
+static int cur_want = 1;            /* the host's ESC [?25h / l */
+
 static void cursor_sync(void)
 {
-    IO_CURSOR = (uint32_t)(cx < COLS ? cx : COLS - 1) | ((uint32_t)cy << 8) | (1u << 16);
+    IO_CURSOR = (uint32_t)(cx < COLS ? cx : COLS - 1) | ((uint32_t)cy << 8)
+              | (cur_want && !sb_active() ? (1u << 16) : 0);
 }
 
 void term_show_cursor(int on)
@@ -40,6 +43,8 @@ void term_show_cursor(int on)
     uint32_t v = IO_CURSOR & 0xFFFF;
     IO_CURSOR = v | (on ? (1u << 16) : 0);
 }
+
+int term_cursor_wanted(void) { return cur_want; }
 
 static void clear_cells(int row, int c0, int c1)
 {
@@ -51,6 +56,9 @@ static void clear_cells(int row, int c0, int c1)
 static void scroll_up(int t, int b, int n)
 {
     if (n > b - t + 1) n = b - t + 1;
+    if (t == 0)                         /* off the top of the screen: into the scrollback */
+        for (int r = 0; r < n; r++)
+            sb_push_row(r);
     for (int r = t; r + n <= b; r++)
         for (int c = 0; c < COLS; c++)
             cell_set_raw(r, c, cell_get(r + n, c));
@@ -85,6 +93,7 @@ void term_reset(void)
     cx = cy = 0; wrap = 0;
     top = 0; bot = TROWS - 1;
     fg = 7; bg = 0; bold = rev = 0;
+    cur_want = 1;
     sx = sy = 0; sfg = 7; sbg = 0; sbold = srev = 0;
     st = S_NORM;
     for (int r = 0; r < TROWS; r++)
@@ -192,7 +201,7 @@ static void csi(uint8_t f)
     case 's': sx = cx; sy = cy; break;
     case 'u': cx = sx; cy = sy; break;
     case 'h': case 'l':
-        if (priv && npar && par[0] == 25) term_show_cursor(f == 'h');
+        if (priv && npar && par[0] == 25) { cur_want = f == 'h'; cursor_sync(); }
         break;
     case 'n':
         if (npar && par[0] == 6) reply_pos();

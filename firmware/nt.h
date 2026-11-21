@@ -3,7 +3,7 @@
 #define NT_H
 #include <stdint.h>
 
-#define VERSION     "0.2.0"
+#define VERSION     "0.3.0"
 #define COLS        80
 #define TROWS       24              /* the terminal: rows 0-23 (VT100's 80 x 24) */
 #define STATUS_ROW  24
@@ -24,6 +24,17 @@ void fill_row(int row, int col0, int col1, uint8_t ch, uint8_t attr);
 void term_reset(void);
 void term_putc(uint8_t c);
 void term_show_cursor(int on);
+int term_cursor_wanted(void);
+
+/* scrollback.c: the lines scrolled off the top, and looking back at them */
+#define SB_LINES    200
+void sb_push_row(int row);
+void sb_scroll(int delta);          /* + = back */
+void sb_top(void);
+void sb_exit(void);
+int sb_active(void);
+int sb_offset(void);
+int sb_count(void);
 
 /* main.c: to the host (the serial port), and the local echo; user_send is
    what the keyboards send (through the modem's line editor in Mode FujiNet
